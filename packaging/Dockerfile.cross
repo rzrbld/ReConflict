@@ -1,0 +1,9 @@
+# Public replacement for the original local GCC12/Bookworm build image.
+FROM debian:bookworm-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
+RUN dpkg --add-architecture arm64 && apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu \
+      libsdl2-dev:arm64 libsdl2-ttf-dev:arm64 libgles2-mesa-dev:arm64 \
+      ca-certificates python3 && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /src

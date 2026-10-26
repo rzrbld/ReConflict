@@ -1,0 +1,24 @@
+{
+  "version": 4,
+  "name": "reconflict.zip",
+  "items": ["ReConflict.sh", "ReConflict Settings.sh", "reconflict"],
+  "items_opt": [],
+  "attr": {
+    "title": "ReConflict",
+    "porter": ["rzrbld"],
+    "desc": "An experimental ARM64 community port for Conflict: Desert Storm, using SDL2 and OpenGL ES. Players supply the English GOG Windows 1.0 build21657 installer.",
+    "desc_md": null,
+    "inst": "Put setup_conflict_-_desert_storm_1.0_(21657).exe in reconflict/ and launch ReConflict. Python3.9+ is required. The SDL launcher extracts and verifies the files, then offers to keep or delete the installer. Allow 2 GiB free before copying it. Tested firmware: 64-bit muOS on H700.",
+    "inst_md": null,
+    "genres": ["action", "fps"],
+    "image": null,
+    "rtr": false,
+    "exp": true,
+    "runtime": [],
+    "store": ["https://www.gog.com/en/game/conflict_desert_storm"],
+    "availability": "commercial",
+    "reqs": [],
+    "arch": ["aarch64"],
+    "min_glibc": "2.36"
+  }
+}

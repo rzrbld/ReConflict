@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gameList>
+  <game>
+    <path>./ReConflict.sh</path>
+    <name>ReConflict</name>
+    <desc>Community ARM64 port for Conflict: Desert Storm. Requires the player's English GOG Windows 1.0 build21657 installer. SDL2 controllers and OpenGL ES graphics; experimental H700 support.</desc>
+    <developer>ReConflict contributors</developer>
+    <genre>Action</genre>
+    <players>1</players>
+  </game>
+</gameList>

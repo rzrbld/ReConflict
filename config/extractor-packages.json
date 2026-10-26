@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://deb.debian.org/debian/pool/main/i/innoextract/innoextract_1.9-0.1_arm64.deb",
+    "sha256": "8b705e3150c6d5881e9de2fea8d34655849f1fe0f7ad7c598d0b3d97040afb65",
+    "filename": "innoextract_1.9-0.1_arm64.deb"
+  },
+  {
+    "url": "https://deb.debian.org/debian/pool/main/b/boost1.74/libboost-filesystem1.74.0_1.74.0+ds1-21_arm64.deb",
+    "sha256": "486dd6442b5562ac197efd05d1f067d175e4c361212d1df757755f50a9c93fe0",
+    "filename": "libboost-filesystem1.74.0_1.74.0+ds1-21_arm64.deb"
+  },
+  {
+    "url": "https://deb.debian.org/debian/pool/main/b/boost1.74/libboost-iostreams1.74.0_1.74.0+ds1-21_arm64.deb",
+    "sha256": "25d131cdc1f96581f75b42d207a97d2f7935c3cf24b825033e4ee978676bca56",
+    "filename": "libboost-iostreams1.74.0_1.74.0+ds1-21_arm64.deb"
+  },
+  {
+    "url": "https://deb.debian.org/debian/pool/main/b/boost1.74/libboost-program-options1.74.0_1.74.0+ds1-21_arm64.deb",
+    "sha256": "94eba96d5655ee31037b858a2a384fb17d5c464139b853d411d7668e47eefb00",
+    "filename": "libboost-program-options1.74.0_1.74.0+ds1-21_arm64.deb"
+  }
+]

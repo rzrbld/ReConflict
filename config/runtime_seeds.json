@@ -1,0 +1,45 @@
+{
+  "binary": "setup_conflict_-_desert_storm_1.0_(21657)/DesertStorm.exe",
+  "sha256": "d712f5ec82c14da66b098332b3cc9c99689091f46317112ea35dfd393dc3e164",
+  "seeds": [
+    {
+      "address": "0x568d34",
+      "caller": "0x568a70",
+      "source": "docs/evidence/game-second-device.log",
+      "reason": "Observed strict-dispatch failure in the MSVC overlap-aware memory-copy routine; backward unrolled copy arm.",
+      "expected_prefix": "8b448e0489448f04"
+    },
+    {
+      "address": "0x470f90",
+      "caller": "0x47d170",
+      "source": "docs/evidence/game-twentyfirst-device.log",
+      "reason": "Observed campaign strict-dispatch failure at original virtual call0x47D1B0. Constructor0x470AE8 sets vtable0x5D9150; its slot+0x10 stores0x470F90. Original11-instruction method calls known0x478860/0x4E5D80 then tail-jumps known0x4548D0.",
+      "expected_prefix": "568bf1e8c878000085c075088b4e08e8"
+    },
+    {
+      "address": "0x402dd0",
+      "source": "docs/evidence/constructor-vtable-audit.json",
+      "reason": "Original constructor 0x402A18 and destructor 0x402A50 write vtable 0x5D83D8; its confirmed slot +0x14 points to this 15-instruction method. Direct callees 0x456EB0 and 0x456F40 are catalogued. Proactive recovery; no observed runtime failure at this target.",
+      "expected_prefix": "566a006a068bf1e8d44005008b4e088b"
+    }
+  ],
+  "bounded_tables": [
+    {
+      "name": "MSVC backward short-word memory-copy arms",
+      "address": "0x568d00",
+      "minimum_index": -7,
+      "maximum_index": 0,
+      "index_proof": "0x568c18 SHR ECX,2; 0x568c1e CMP ECX,8; 0x568c21 JB 0x568c30; 0x568c30 NEG ECX; 0x568c32 JMP [ECX*4+0x568d00]. Thus index is -7..0.",
+      "expected_targets": [
+        "0x568d04",
+        "0x568d0c",
+        "0x568d14",
+        "0x568d1c",
+        "0x568d24",
+        "0x568d2c",
+        "0x568d34",
+        "0x568d47"
+      ]
+    }
+  ]
+}
