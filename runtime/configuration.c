@@ -13,10 +13,14 @@ const DSGraphicsOption ds_graphics_options[DS_GRAPHICS_COUNT]={
  {"AdapterIndex","ADAPTER",0,0,0}, {"ResolutionIndex","640 X 480",0,0,0},
  {"Shadows","SHADOWS",0,1,1}, {"PShaders","PIXEL SHADERS",0,0,0},
  {"VShaders","VERTEX SHADERS",0,0,0}, {"DrawDistance","DRAW DISTANCE",0,0,0},
- {"TextureResolution","LOW TEXTURES",1,1,1}, {"ShrubLevel","LESS SHRUBS",1,1,0},
- {"DetailTextures","DETAIL TEXTURES",0,1,1}, {"Decals","DECALS",0,1,1},
+ {"TextureResolution","TEXTURE QUALITY",1,1,1}, {"ShrubLevel","LESS SHRUBS",1,1,0},
+ {"DetailTextures","SURFACE DETAIL",0,1,1}, {"Decals","DECALS",0,1,1},
  {"EnvironmentMaps","ENVIRONMENT MAPS",0,1,1}
 };
+const char *ds_configuration_value_label(int index,uint32_t value){
+ if(index>=0&&index<DS_GRAPHICS_COUNT&&!strcmp(ds_graphics_options[index].key,"TextureResolution"))return value?"LOW":"HIGH";
+ return value?"ON":"OFF";
+}
 void ds_configuration_defaults(DSGraphicsConfig *s){
  memset(s,0,sizeof *s);
  for(int i=0;i<DS_GRAPHICS_COUNT;i++)s->value[i]=ds_graphics_options[i].initial;

@@ -48,6 +48,8 @@ D-pad to select, left/right to change, **A** to confirm and **B** to cancel.
 Start with **640×480 and lowest detail**. The launcher includes graphics options,
 an **FPS counter**, and **30 FPS / 60 FPS / Uncapped** limits (default: 60).
 A frame cap limits fast scenes; it cannot speed up slow ones.
+**Texture quality: Low / High** sets texture resolution. **Surface detail: Off / On**
+is a separate detail-texture effect; these are independent settings.
 
 Expect roughly **20–30 FPS in busy gameplay**, with higher rates in light scenes.
 Large explosions can briefly dip into the teens. Performance varies, and the
