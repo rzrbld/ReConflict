@@ -16,11 +16,11 @@ The download contains no original Windows executable or game assets.
 **This is the experimental portable-GLES source branch.** For the tested H700
 package, use the main-renderer download below.
 
-Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261026-235909)**
+Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261028-140957)**
 for the tested device. Download the `reconflict-portmaster-…zip` asset, **not**
 GitHub's “Source code” archive.
 
-A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261028-082827)
+A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261028-140957-gles)
 is available for testing. Its gameplay and compatibility on other firmware are
 not yet verified. Both downloads remain prereleases.
 
