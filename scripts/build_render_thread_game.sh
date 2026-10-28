@@ -100,8 +100,11 @@ fi
 [[ -z "$length_stage" ]] || sha256sum "$length_stage"/*.c "$length_stage"/*.h "$length_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
 [[ -z "$product_stage" ]] || sha256sum "$product_stage"/*.c "$product_stage"/*.h "$product_stage"/*.inc "$product_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
 [[ -z "$loading_stage" ]] || sha256sum "$loading_stage"/*.c "$loading_stage"/*.h "$loading_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
+input_edges=${DS_INPUT_EDGE_FIX:-1}
+[[ "$input_edges" == 0 || "$input_edges" == 1 ]] || exit 2
 image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
 docker run --rm --network none --read-only --tmpfs /tmp \
+  -e DS_INPUT_EDGE_FIX="$input_edges" \
   -e DS_RT_PROXY_SOURCE="$proxy_source" -e DS_RT_OUTPUT="$output_subdir" -e DS_RT_GEOMETRY_SOURCE="$geometry_source" \
   -e DS_RT_PROFILER_SOURCE="$profiler_source" \
   -e DS_RT_SKINNING_SOURCE="$skinning_source" \
@@ -203,9 +206,15 @@ docker run --rm --network none --read-only --tmpfs /tmp \
       fi
       aarch64-linux-gnu-ar rcs "$out/rotation/lifted.aarch64.a" "$out/rotation/functions_0003.aarch64.o"
     fi
+    if [[ "$DS_INPUT_EDGE_FIX" == 1 ]]; then
+      aarch64-linux-gnu-gcc $flags -O2 -I/src/runtime -c /src/runtime/dinput8.c -o "$out/obj/ds_dinput8.o"
+    else
+      rm -f "$out/obj/ds_dinput8.o"
+    fi
     objects=()
     for obj in "$frozen"/build/game/obj/*.o; do
       case "${obj##*/}" in ds_d3d8.o|ds_d3d8_renderer.o|ds_fps_overlay.o|ds_game_main.o) continue;; esac
+      if [[ "${obj##*/}" == ds_dinput8.o && "$DS_INPUT_EDGE_FIX" == 1 ]]; then continue; fi
       if [[ "${obj##*/}" == ds_loading_background.o && -n "$DS_RT_LOADING_STAGE" ]]; then continue; fi
       if [[ "${obj##*/}" == ds_geometry_fast.o && -n "$DS_RT_GEOMETRY_SOURCE" ]]; then continue; fi
       if [[ "${obj##*/}" == ds_profiler.o && -n "$DS_RT_PROFILER_SOURCE" ]]; then continue; fi

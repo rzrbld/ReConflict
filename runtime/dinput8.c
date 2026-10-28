@@ -9,6 +9,7 @@
 #include "win32hle.h"
 #include "../probe/desert_pad.h"
 #include "test_input.h"
+#include "pad_edges.h"
 
 #define DI_OK 0u
 #define E_NOINTERFACE 0x80004002u
@@ -32,6 +33,7 @@ typedef struct {
     unsigned objects;
     int traced;
     DS_PadState previous;
+    DS_PadEdges edges;
     uint32_t previous_game[7];
 } InputDevice;
 static InputDevice devices[MAX_DEVICES];
@@ -41,6 +43,10 @@ static uint8_t keyboard[256];
 static int mouse_dx, mouse_dy, mouse_dz;
 static uint8_t mouse_buttons[8];
 static uint32_t sequence;
+static int input_focused=1;
+static int physical_edges_enabled(void){
+ const char *v=getenv("DS_TEST_INPUT");return !v||strcmp(v,"1");
+}
 
 static const uint8_t iid_input8a[16]={0x30,0x80,0x79,0xbf,0x3a,0x48,0xa2,0x4d,0xaa,0x99,0x5d,0x64,0xed,0x36,0x97,0};
 static const uint8_t iid_device8a[16]={0x80,0x10,0xd4,0x54,0x15,0xdc,0x33,0x48,0xa4,0x1b,0x74,0x8f,0x73,0xa3,0x81,0x79};
@@ -83,6 +89,14 @@ void ds_input_pump(void) {
     if(!(SDL_WasInit(SDL_INIT_EVENTS)&SDL_INIT_EVENTS))return;
     SDL_Event e;
     while(SDL_PollEvent(&e)){
+        if(physical_edges_enabled())for(unsigned i=0;i<MAX_DEVICES;i++){
+            InputDevice *d=&devices[i];if(!d->used||d->kind!=K_PAD)continue;
+            if(e.type==SDL_CONTROLLERDEVICEREMOVED&&e.cdevice.which==d->instance)ds_edges_reset(&d->edges);
+            if(!input_focused||!d->acquired||!d->pad)continue;
+            if(((e.type==SDL_CONTROLLERBUTTONDOWN||e.type==SDL_CONTROLLERBUTTONUP)&&e.cbutton.which==d->instance)||
+               (e.type==SDL_CONTROLLERAXISMOTION&&e.caxis.which==d->instance))ds_edges_event(&d->edges,&d->config,&e);
+        }
+
         if(e.type==SDL_KEYDOWN||e.type==SDL_KEYUP){unsigned key=dik(e.key.keysym.scancode);if(key)keyboard[key]=e.type==SDL_KEYDOWN?0x80:0;uint32_t keyvk=vk(e.key.keysym);if(keyvk)hle_input_key(e.type==SDL_KEYDOWN,keyvk,key);}
         else if(e.type==SDL_MOUSEMOTION){mouse_dx+=e.motion.xrel;mouse_dy+=e.motion.yrel;hle_input_mouse(0x200,e.motion.x,e.motion.y);}
         else if(e.type==SDL_MOUSEWHEEL)mouse_dz+=e.wheel.y*120;
@@ -90,6 +104,8 @@ void ds_input_pump(void) {
         else if(e.type==SDL_QUIT){uint32_t w=hle_first_hwnd();if(w)hle_post_message(w,0x10,0,0);}
         else if(e.type==SDL_WINDOWEVENT&&(e.window.event==SDL_WINDOWEVENT_FOCUS_LOST||e.window.event==SDL_WINDOWEVENT_FOCUS_GAINED)){
             int gained=e.window.event==SDL_WINDOWEVENT_FOCUS_GAINED;
+            input_focused=gained;
+            if(!gained)for(unsigned i=0;i<MAX_DEVICES;i++)ds_edges_reset(&devices[i].edges);
             if(!gained){memset(keyboard,0,sizeof keyboard);memset(mouse_buttons,0,sizeof mouse_buttons);}
             uint32_t w=hle_first_hwnd();if(w){hle_post_message(w,0x6,gained?1:0,0);hle_post_message(w,gained?0x7:0x8,0,0);}
         }
@@ -106,7 +122,7 @@ static int ensure_sdl(void) {
 static InputDevice *device(uint32_t self){for(unsigned i=0;i<MAX_DEVICES;++i)if(devices[i].used&&devices[i].self==self)return &devices[i];return NULL;}
 static void guid(uint8_t *out,int kind,int ordinal){static const uint8_t tail[12]={0xa0,0xd5,0xcf,0x11,0xbf,0xc7,0x44,0x45,0x53,0x54,0,0};uint32_t head=kind==K_KEYBOARD?0x6f1d2b61u:kind==K_MOUSE?0x6f1d2b60u:0x44530000u+(uint32_t)ordinal;memcpy(out,&head,4);memcpy(out+4,tail,12);}
 static int pad_index(int ordinal){int found=0;for(int i=0;i<SDL_NumJoysticks();++i)if(SDL_IsGameController(i)){if(found++==ordinal)return i;}return -1;}
-static SDL_GameController *get_pad(InputDevice *d){if(d->pad&&SDL_GameControllerGetAttached(d->pad))return d->pad;if(d->pad)SDL_GameControllerClose(d->pad);d->pad=NULL;int i=pad_index(d->ordinal);if(i>=0){d->pad=SDL_GameControllerOpen(i);if(d->pad)d->instance=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(d->pad));}return d->pad;}
+static SDL_GameController *get_pad(InputDevice *d){if(d->pad&&SDL_GameControllerGetAttached(d->pad))return d->pad;if(d->pad)SDL_GameControllerClose(d->pad);d->pad=NULL;ds_edges_reset(&d->edges);int i=pad_index(d->ordinal);if(i>=0){d->pad=SDL_GameControllerOpen(i);if(d->pad)d->instance=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(d->pad));}return d->pad;}
 static int identify(const uint8_t *g,int *ordinal){if(!g)return 0;uint32_t h;memcpy(&h,g,4);*ordinal=0;if(h==0x6f1d2b61u)return K_KEYBOARD;if(h==0x6f1d2b60u)return K_MOUSE;if((h&0xffff0000u)==0x44530000u){*ordinal=(int)(h&0xffffu);return K_PAD;}return 0;}
 static void info(uint32_t va,InputDevice *d,int kind,int ordinal){uint32_t n=MEM32(va);if(n<560||n>580)return;memset(hle_ptr(va),0,n);MEM32(va)=n;uint8_t g[16];guid(g,kind,ordinal);memcpy(hle_ptr(va+4),g,16);memcpy(hle_ptr(va+20),g,16);MEM32(va+36)=kind==K_KEYBOARD?0x13u:kind==K_MOUSE?0x12u:0x15u;const char *name=kind==K_KEYBOARD?"SDL2 Keyboard":kind==K_MOUSE?"SDL2 Mouse":"SDL2 Controller";if(kind==K_PAD){int index=pad_index(ordinal);if(index>=0&&SDL_GameControllerNameForIndex(index))name=SDL_GameControllerNameForIndex(index);}size_t len=strnlen(name,259);uint8_t *dst=hle_ptr(va);if(!dst)return;memcpy(dst+40,name,len);memcpy(dst+300,name,len);if(n>=580){MEM16(va+576)=1;MEM16(va+578)=kind==K_PAD?5:kind==K_MOUSE?2:6;}if(d)memcpy(d->guid,g,16);}
 static void query_input(void){if(A32(1)&&A32(2)&&(!memcmp(APTR(1),iid_unknown,16)||!memcmp(APTR(1),iid_input8a,16))){MEM32(A32(2))=A32(0);++MEM32(A32(0)+4);RET(DI_OK,3);}if(A32(2))MEM32(A32(2))=0;RET(E_NOINTERFACE,3);}
@@ -118,7 +134,7 @@ static void status(void){int ordinal;int k=identify(APTR(1),&ordinal);RET(k&&(k!
 static void get_caps(void){InputDevice*d=device(A32(0));uint32_t p=A32(1);if(!d||!p||MEM32(p)<24)RET(DIERR_INVALIDPARAM,2);uint32_t n=MEM32(p);if(n>44)n=44;memset(hle_ptr(p+4),0,n-4);MEM32(p+4)=1;MEM32(p+8)=d->kind==K_PAD?0x15:d->kind==K_MOUSE?0x12:0x13;MEM32(p+12)=d->kind==K_PAD?4:d->kind==K_MOUSE?3:0;MEM32(p+16)=d->kind==K_PAD?16:d->kind==K_MOUSE?8:256;MEM32(p+20)=d->kind==K_PAD?1:0;RET(DI_OK,2);}
 static void set_format(void){InputDevice*d=device(A32(0));uint32_t p=A32(1);if(!d||!p||MEM32(p)<24||MEM32(p+4)<16||MEM32(p+12)>4096||MEM32(p+16)>256)RET(DIERR_INVALIDPARAM,2);d->datasize=MEM32(p+12);d->objects=MEM32(p+16);d->format_flags=MEM32(p+8);uint32_t objects=MEM32(p+20),stride=MEM32(p+4);for(unsigned i=0;i<d->objects;++i){uint32_t o=objects+i*stride;d->format[i]=(FormatObject){MEM32(o+4),MEM32(o+8),MEM32(o)?MEM32(MEM32(o)):0,MEM32(o+12)};}RET(DI_OK,2);}
 static void acquire(void){InputDevice*d=device(A32(0));if(!d)RET(DIERR_INVALIDPARAM,1);if(d->kind==K_PAD&&!get_pad(d))RET(DIERR_UNPLUGGED,1);d->acquired=1;RET(DI_OK,1);}
-static void unacquire(void){InputDevice*d=device(A32(0));if(!d)RET(DIERR_INVALIDPARAM,1);d->acquired=0;RET(DI_OK,1);}
+static void unacquire(void){InputDevice*d=device(A32(0));if(!d)RET(DIERR_INVALIDPARAM,1);d->acquired=0;ds_edges_reset(&d->edges);RET(DI_OK,1);}
 static void set_coop(void){InputDevice*d=device(A32(0));if(!d)RET(DIERR_INVALIDPARAM,3);d->hwnd=A32(1);RET(DI_OK,3);}
 static int property_axis(uint32_t p){if(MEM32(p+12)==1){unsigned o=MEM32(p+8);return o<24&&o%4==0?(int)(o/4):-1;}return -1;}
 static void set_property(void){InputDevice*d=device(A32(0));uint32_t prop=A32(1),p=A32(2);if(!d||!p||MEM32(p)<20||MEM32(p+4)!=16)RET(DIERR_INVALIDPARAM,3);if(prop==1)d->buffer_size=MEM32(p+16);else if(prop==2)d->relative=MEM32(p+16)!=0;else if(prop==4){if(MEM32(p)<24)RET(DIERR_INVALIDPARAM,3);int axis=property_axis(p);if(axis<0){for(int i=0;i<6;++i){d->low[i]=(int32_t)MEM32(p+16);d->high[i]=(int32_t)MEM32(p+20);}}else{d->low[axis]=(int32_t)MEM32(p+16);d->high[axis]=(int32_t)MEM32(p+20);}}else if(prop==5){uint32_t dz=MEM32(p+16);if(dz>10000)RET(DIERR_INVALIDPARAM,3);d->config.deadzone=dz/10000.f;}else if(prop==6||prop==7||prop==8){/* Saturation/granularity are not adjusted: report unsupported. */RET(DIERR_UNSUPPORTED,3);}else RET(DIERR_UNSUPPORTED,3);RET(DI_OK,3);}
@@ -137,7 +153,7 @@ static void trace_pad(InputDevice*d,const DS_PadState*p){
         MEM32(0x754be8),MEM32(0x60f5f0),(int32_t)MEM32(0x60f980),game[0],game[1],game[2],game[3],game[4],game[5],game[6]);
     d->previous=*p;memcpy(d->previous_game,game,sizeof game);d->traced=1;
 }
-static void get_state(void){InputDevice*d=device(A32(0));uint32_t n=A32(1),out=A32(2);if(!d||!out||n!=d->datasize||n>4096)RET(DIERR_INVALIDPARAM,3);if(!d->acquired)RET(DIERR_NOTACQUIRED,3);ds_input_pump();uint8_t state[272]={0};size_t source_size=sizeof state;if(d->kind==K_PAD){DS_PadState p;SDL_GameController*pad=get_pad(d);if(!pad)RET(DIERR_UNPLUGGED,3);ds_test_input_sample(pad,&d->config,&p);trace_pad(d,&p);memcpy(state,&p,sizeof p);for(int i=0;i<6;++i){int32_t v;memcpy(&v,state+i*4,4);double scaled=d->low[i]+((double)v+128)*(d->high[i]-d->low[i])/256.;v=(int32_t)scaled;memcpy(state+i*4,&v,4);}}else if(d->kind==K_KEYBOARD){memcpy(state,keyboard,256);source_size=256;}else{memcpy(state,&mouse_dx,4);memcpy(state+4,&mouse_dy,4);memcpy(state+8,&mouse_dz,4);memcpy(state+12,mouse_buttons,8);source_size=20;mouse_dx=mouse_dy=mouse_dz=0;}memset(hle_ptr(out),0,n);if(!d->objects){memcpy(hle_ptr(out),state,n<source_size?n:source_size);}else for(unsigned i=0;i<d->objects;++i){const FormatObject*f=&d->format[i];int from=source_offset(f,d->kind);unsigned bytes=(f->type&0x0c)?1:4;if(from>=0&&(size_t)from+bytes<=source_size&&f->offset+bytes<=n)memcpy(hle_ptr(out+f->offset),state+from,bytes);}RET(DI_OK,3);}
+static void get_state(void){InputDevice*d=device(A32(0));uint32_t n=A32(1),out=A32(2);if(!d||!out||n!=d->datasize||n>4096)RET(DIERR_INVALIDPARAM,3);if(!d->acquired)RET(DIERR_NOTACQUIRED,3);ds_input_pump();uint8_t state[272]={0};size_t source_size=sizeof state;if(d->kind==K_PAD){DS_PadState p;SDL_GameController*pad=get_pad(d);if(!pad)RET(DIERR_UNPLUGGED,3);ds_test_input_sample(pad,&d->config,&p);if(physical_edges_enabled()){if(input_focused)ds_edges_sample(&d->edges,&p);else ds_pad_encode(NULL,&d->config,&p);}trace_pad(d,&p);memcpy(state,&p,sizeof p);for(int i=0;i<6;++i){int32_t v;memcpy(&v,state+i*4,4);double scaled=d->low[i]+((double)v+128)*(d->high[i]-d->low[i])/256.;v=(int32_t)scaled;memcpy(state+i*4,&v,4);}}else if(d->kind==K_KEYBOARD){memcpy(state,keyboard,256);source_size=256;}else{memcpy(state,&mouse_dx,4);memcpy(state+4,&mouse_dy,4);memcpy(state+8,&mouse_dz,4);memcpy(state+12,mouse_buttons,8);source_size=20;mouse_dx=mouse_dy=mouse_dz=0;}memset(hle_ptr(out),0,n);if(!d->objects){memcpy(hle_ptr(out),state,n<source_size?n:source_size);}else for(unsigned i=0;i<d->objects;++i){const FormatObject*f=&d->format[i];int from=source_offset(f,d->kind);unsigned bytes=(f->type&0x0c)?1:4;if(from>=0&&(size_t)from+bytes<=source_size&&f->offset+bytes<=n)memcpy(hle_ptr(out+f->offset),state+from,bytes);}RET(DI_OK,3);}
 static void get_data(void){/* Buffered input is optional; fail instead of losing transitions silently. */InputDevice*d=device(A32(0));if(!d||!A32(3))RET(DIERR_INVALIDPARAM,5);MEM32(A32(3))=0;RET(d->buffer_size?DIERR_UNSUPPORTED:0x80070015u,5);}
 static void device_info(void){InputDevice*d=device(A32(0));if(!d||!A32(1)||MEM32(A32(1))<560||MEM32(A32(1))>580)RET(DIERR_INVALIDPARAM,2);info(A32(1),d,d->kind,d->ordinal);RET(DI_OK,2);}
 static void poll(void){InputDevice*d=device(A32(0));if(!d)RET(DIERR_INVALIDPARAM,1);ds_input_pump();if(d->kind==K_PAD&&!get_pad(d))RET(DIERR_UNPLUGGED,1);RET(d->acquired?DI_OK:DIERR_NOTACQUIRED,1);}
