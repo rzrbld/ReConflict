@@ -61,6 +61,7 @@ static enum Page page=BUSY;
 static char message[192]="CHECKING GAME FILES";
 static pid_t worker=-1;
 static int deleting;
+static Uint64 import_started;
 static int graphics_count,graphics_indices[DS_GRAPHICS_COUNT];
 static DSGraphicsConfig graphics;
 static SDL_Thread *save_thread;
@@ -109,6 +110,7 @@ static int save_options(void *unused){
 }
 static void start_worker(int remove_installer){
  page=BUSY;percent=-1;selected=0;cancelling=0;deleting=remove_installer;
+ import_started=SDL_GetTicks64();
  snprintf(message,sizeof message,"%s",remove_installer?"CHECKING INSTALLER BEFORE DELETION":"CHECKING GAME FILES");
  unlink("install-status.txt");
  worker=fork();
@@ -163,6 +165,14 @@ static void wrapped(SDL_Renderer*r,const char*s,int y){
 }
 static void draw(SDL_Renderer*r){
  color(r,9,15,14);SDL_RenderClear(r);label(r,24,32,"RECONFLICT");
+ if(page==STARTING){
+  color(r,5,9,8);box(r,68,182,520,136);
+  color(r,11,20,17);box(r,60,174,520,136);gold(r);
+  SDL_Rect modal={60,174,520,136};SDL_RenderDrawRect(r,&modal);
+  label(r,224,211,"GAME IS STARTING");
+  label(r,248,257,"PLEASE WAIT");
+  return;
+ }
  color(r,5,9,8);box(r,36,106,584,296);color(r,11,20,17);box(r,28,98,584,296);
  color(r,122,107,51);
  for(int inset=0;inset<=3;inset+=3){SDL_Rect b={28+inset,98+inset,584-inset*2,296-inset*2};SDL_RenderDrawRect(r,&b);}
@@ -187,7 +197,12 @@ static void draw(SDL_Renderer*r){
   color(r,selected==1?61:31,43,31);box(r,332,300,260,38);label(r,344,312,"B EXIT");
  }else{
   wrapped(r,cancelling?"STOPPING SAFELY. PLEASE WAIT.":message,140);
-  label(r,48,254,percent<0?"WORKING...":"CURRENT TASK");
+  Uint64 elapsed=(SDL_GetTicks64()-import_started)/1000;
+  char elapsed_text[64];
+  snprintf(elapsed_text,sizeof elapsed_text,"TIME ELAPSED  %llu:%02llu",
+           (unsigned long long)(elapsed/60),(unsigned long long)(elapsed%60));
+  label(r,48,238,elapsed_text);
+  label(r,48,262,percent<0?"WORKING...":"CURRENT TASK");
   color(r,5,9,8);box(r,48,280,544,26);
   for(int i=0;i<66;i++){
    int pulse=(int)(SDL_GetTicks()/70)%72;

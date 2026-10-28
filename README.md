@@ -47,7 +47,8 @@ Use the **ARM64 runtime package**, not GitHub's source-code ZIP.
    start the game, or **Cancel** to leave without changing settings. Later
    launches go straight to this same window with your saved settings after a
    quick installation check.
-   **Saving settings… / Starting game…** remains visible during handoff; the
+   An elapsed-time display stays live during import, including slow file operations.
+   A simple **Game is starting / Please wait** modal remains visible during handoff; the
    first game startup can take longer while files are read from the SD card.
 
 The launcher uses a resizable SDL window, a 640×480 logical layout and Vurus's
