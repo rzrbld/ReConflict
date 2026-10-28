@@ -110,3 +110,11 @@ core
 /licenses/*
 !/licenses/*.txt
 !/tests/*.py
+
+# Public user/developer manuals only; internal docs remain excluded.
+!/manuals/
+/manuals/*
+!/manuals/BUILDING.md
+!/manuals/TROUBLESHOOTING.md
+!/manuals/TECHNICAL.md
+!/manuals/CREDITS.md

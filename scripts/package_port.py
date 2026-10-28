@@ -36,6 +36,12 @@ def main():
         files[port+'tools/licenses/'+name+'.txt']=((a.extractor_tools/'licenses'/(name+'.txt')).read_bytes(),0o644)
     for name in ['prepare_game.py','import_game_data.py']:
         files[port+name]=((ROOT/'scripts'/name).read_bytes(),0o644)
+    for name in ['BUILDING.md','TROUBLESHOOTING.md','TECHNICAL.md','CREDITS.md']:
+        content=(ROOT/'manuals'/name).read_bytes()
+        files['manuals/'+name]=(content,0o644)
+        files[port+'manuals/'+name]=(content,0o644)
+    files['LICENSE']=((ROOT/'LICENSE').read_bytes(),0o644)
+    files[port+'LICENSE']=((ROOT/'LICENSE').read_bytes(),0o644)
     files[port+'README.md']=((ROOT/'README.md').read_bytes(),0o644)
     files[port+'licenses/port-MIT.txt']=((ROOT/'LICENSE').read_bytes(),0o644)
     for name in ['innoextract','Vurus']:
