@@ -312,3 +312,19 @@ Inspect the candidate with `readelf -d`: no direct Mali/GLES/EGL dependency
 should remain. SDL itself still needs a working firmware graphics stack.
 Host smoke tests do not establish H700 performance or other firmware support;
 keep the known-working release until hardware comparisons pass.
+
+### Controller press preservation
+
+The input adapter retains physical SDL button and trigger transitions
+until the guest reads controller state. Each read consumes at most one transition
+per logical button. Held buttons do not generate extra press edges. The bounded
+queue stores eight transitions per button; overload drops oldest transitions.
+Focus loss, unacquire and reconnect discard pending input. Automated input keeps
+its existing independent sequencing.
+
+For the retained optimized checkpoint, add `DS_INPUT_EDGE_FIX=1` and
+`DS_RT_BUILD_LABEL=input-edges` to the relink command above. The optimized relink enables this fix by default; use `DS_INPUT_EDGE_FIX=0`
+only for comparison with the old adapter. Run `bash scripts/test_input_audio.sh` for the isolated
+DirectInput/SDL regression tests. The player confirmed improved firing on H700 with the stable-renderer test build.
+Full weapon coverage and portable-GLES gameplay validation remain pending.
+This addresses lost short taps, not weapon-specific readiness or reload rules.

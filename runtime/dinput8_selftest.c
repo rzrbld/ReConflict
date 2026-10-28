@@ -28,6 +28,41 @@ int main(int argc,char**argv){
     for(unsigned i=0;i<164;++i){uint32_t o=objects+i*16;if(i<8){uint32_t ag=axisguid+(i<6?i:0)*16;MEM32(ag)=axis[i<6?i:0];MEM32(o)=ag;MEM32(o+4)=i*4;MEM32(o+8)=0x80ffff03;MEM32(o+12)=0x100;}else if(i<12){MEM32(o+4)=32+(i-8)*4;MEM32(o+8)=0x80ffff10;}else if(i<140){MEM32(o+4)=48+i-12;MEM32(o+8)=0x80ffff0c;}else{MEM32(o)=axisguid;MEM32(o+4)=176+(i-140)*4;MEM32(o+8)=0x80ffff03;MEM32(o+12)=0x200;}}
     uint32_t fmtarg[1]={format};assert(!invoke(d,11,1,fmtarg));uint32_t state=hle_scratch(272),stateargs[2]={272,state};assert(invoke(d,9,2,stateargs)==0x8007000c);assert(!invoke(d,7,0,NULL));assert(!invoke(d,25,0,NULL));assert(!invoke(d,9,2,stateargs));
     assert((int32_t)MEM32(state)==-128);assert((int32_t)MEM32(state+4)==128);assert((int32_t)MEM32(state+8)>=45&&(int32_t)MEM32(state+8)<=46);assert(MEM8(state+48+2)==0x80);assert(MEM8(state+48+4)==0x80);assert(MEM8(state+48+5)==0);assert(MEM8(state+48+11)==0x80);assert(MEM8(state+48+12)==0x80);assert(MEM32(state+32)==UINT32_MAX);assert(MEM32(state+176)==0);
+    if(!automation){
+        /* Press/release entirely between guest samples, even across many pumps. */
+        SDL_JoystickSetVirtualButton(j,5,1);SDL_JoystickUpdate();ds_input_pump();
+        SDL_JoystickSetVirtualButton(j,5,0);SDL_JoystickUpdate();
+        for(int k=0;k<20;k++)ds_input_pump();
+        assert(!invoke(d,9,2,stateargs));assert(MEM8(state+55)==0x80);
+        assert(!invoke(d,9,2,stateargs));assert(MEM8(state+55)==0);
+        /* A held fire button stays down, with no artificial repeat edges. */
+        SDL_JoystickSetVirtualButton(j,5,1);SDL_JoystickUpdate();
+        for(int k=0;k<5;k++){assert(!invoke(d,9,2,stateargs));assert(MEM8(state+55)==0x80);}
+        /* Release then repress between samples must expose the release first. */
+        SDL_JoystickSetVirtualButton(j,5,0);SDL_JoystickUpdate();ds_input_pump();
+        SDL_JoystickSetVirtualButton(j,5,1);SDL_JoystickUpdate();ds_input_pump();
+        assert(!invoke(d,9,2,stateargs));assert(!MEM8(state+55));
+        assert(!invoke(d,9,2,stateargs));assert(MEM8(state+55)==0x80);
+        SDL_JoystickSetVirtualButton(j,5,0);SDL_JoystickUpdate();
+        assert(!invoke(d,9,2,stateargs));assert(!MEM8(state+55));
+        /* Trigger bindings retain short pulses too. */
+        SDL_JoystickSetVirtualAxis(j,5,32767);SDL_JoystickUpdate();ds_input_pump();
+        SDL_JoystickSetVirtualAxis(j,5,-32768);SDL_JoystickUpdate();ds_input_pump();
+        assert(!invoke(d,9,2,stateargs));assert(MEM8(state+53)==0x80);
+        assert(!invoke(d,9,2,stateargs));assert(!MEM8(state+53));
+        /* Queued fire must not survive focus loss or device unacquisition. */
+        for(int mode=0;mode<2;mode++){
+            SDL_JoystickSetVirtualButton(j,5,1);SDL_JoystickUpdate();ds_input_pump();
+            SDL_JoystickSetVirtualButton(j,5,0);SDL_JoystickUpdate();ds_input_pump();
+            if(mode==0){
+                SDL_Event e={0};e.type=SDL_WINDOWEVENT;e.window.event=SDL_WINDOWEVENT_FOCUS_LOST;SDL_PushEvent(&e);ds_input_pump();
+                assert(!invoke(d,9,2,stateargs));assert(!MEM8(state+55));
+                e.window.event=SDL_WINDOWEVENT_FOCUS_GAINED;SDL_PushEvent(&e);ds_input_pump();
+            }else{assert(!invoke(d,8,0,NULL));assert(!invoke(d,7,0,NULL));}
+            assert(!invoke(d,9,2,stateargs));assert(!MEM8(state+55));
+        }
+        puts("Physical taps, holds, release/repress, trigger pulses, focus and unacquire reset: PASS");
+    }
     if(automation){
         assert(!invoke(d,8,0,NULL));
         append_commands("tap a\ntap dpup\n");
