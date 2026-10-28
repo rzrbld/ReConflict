@@ -182,7 +182,7 @@ static void draw(SDL_Renderer*r){
   label(r,48,130,"640 X 480 - CONFIGURE BEFORE PLAYING");
   for(int row=0;row<graphics_count+4;row++){
    int y=155+row*25;color(r,row==selected?61:31,row==selected?68:43,31);box(r,48,y,544,23);
-   if(row<graphics_count){int i=graphics_indices[row];label(r,60,y+6,ds_graphics_options[i].label);label(r,510,y+6,graphics.value[i]?"ON":"OFF");}
+   if(row<graphics_count){int i=graphics_indices[row];label(r,60,y+6,ds_graphics_options[i].label);label(r,510,y+6,ds_configuration_value_label(i,graphics.value[i]));}
    else if(row==graphics_count){label(r,60,y+6,"FPS COUNTER");label(r,510,y+6,fps?"ON":"OFF");}
    else if(row==graphics_count+1){label(r,60,y+6,"FRAME CAP");label(r,474,y+6,frame_cap==0?"UNCAPPED":frame_cap==30?"30 FPS":"60 FPS");}
    else label(r,60,y+6,row==graphics_count+2?"SAVE AND RUN":"CANCEL");

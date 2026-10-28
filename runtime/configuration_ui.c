@@ -104,7 +104,7 @@ int ds_configuration_main(void){
    if(row==selected){color(r,54,70,57);SDL_Rect box={16,y-8,608,34};SDL_RenderFillRect(r,&box);}
    color(r,row==selected?245:185,row==selected?220:192,row==selected?150:178);
    if(row<count){int i=indices[row];text(r,28,y,2,ds_graphics_options[i].label);char val[20];
-    if(s.present&(1u<<i))snprintf(val,sizeof val,"%u",s.value[i]);else snprintf(val,sizeof val,"KEEP");
+    if(s.present&(1u<<i))snprintf(val,sizeof val,"%s",ds_configuration_value_label(i,s.value[i]));else snprintf(val,sizeof val,"KEEP");
     text(r,510,y,2,val);
    }else text(r,28,y,2,row==count?"SAVE AND EXIT":"CANCEL");
   }
