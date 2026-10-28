@@ -100,8 +100,11 @@ fi
 [[ -z "$length_stage" ]] || sha256sum "$length_stage"/*.c "$length_stage"/*.h "$length_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
 [[ -z "$product_stage" ]] || sha256sum "$product_stage"/*.c "$product_stage"/*.h "$product_stage"/*.inc "$product_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
 [[ -z "$loading_stage" ]] || sha256sum "$loading_stage"/*.c "$loading_stage"/*.h "$loading_stage/manifest.json" >> "$output/EXPERIMENT-SHA256SUMS"
+portable_gles=${DS_PORTABLE_GLES:-0}
+[[ "$portable_gles" == 0 || "$portable_gles" == 1 ]] || exit 2
 image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
 docker run --rm --network none --read-only --tmpfs /tmp \
+  -e DS_PORTABLE_GLES="$portable_gles" \
   -e DS_RT_PROXY_SOURCE="$proxy_source" -e DS_RT_OUTPUT="$output_subdir" -e DS_RT_GEOMETRY_SOURCE="$geometry_source" \
   -e DS_RT_PROFILER_SOURCE="$profiler_source" \
   -e DS_RT_SKINNING_SOURCE="$skinning_source" \
@@ -226,9 +229,16 @@ docker run --rm --network none --read-only --tmpfs /tmp \
         archives+=("$out/rotation/lifted.aarch64.a")
       else archives+=("$module/lifted.aarch64.a");fi
     done
+    graphics_libs=(-lGLESv2)
+    if [[ "$DS_PORTABLE_GLES" == 1 ]]; then
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -I/src/probe -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2 \
+        -c /src/runtime/gles_dispatch.c -o "$out/gles_dispatch.o"
+      objects+=("$out/gles_dispatch.o")
+      graphics_libs=()
+    fi
     aarch64-linux-gnu-gcc -g -rdynamic -o "$out/game-render-thread.aarch64.new" \
       "${objects[@]}" "${wrappers[@]}" -Wl,--start-group "${archives[@]}" -Wl,--end-group \
-      -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf -lGLESv2 -lm -lpthread -ldl "${profile_libs[@]}"
+      -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf "${graphics_libs[@]}" -lm -lpthread -ldl "${profile_libs[@]}"
     mv "$out/game-render-thread.aarch64.new" "$out/game-render-thread.aarch64"
   '
 sha256sum -c "$output/EXPERIMENT-SHA256SUMS"

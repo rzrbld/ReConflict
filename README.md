@@ -298,3 +298,17 @@ Development is co-authored by rzrbld and OpenAI Codex; Git commits retain the
   [MIT notice](licenses/Vurus.txt). No original game artwork is used in the launcher.
 - SDL2: native window, audio and GameController interfaces. Graphics use the
   device's OpenGL ES driver.
+
+### Experimental portable GLES branch
+
+`experiment/portable-gles` adds `DS_PORTABLE_GLES=1` to the optimized relink
+command above. Use `DS_RT_BUILD_LABEL=portable-gles` for a separate output.
+This removes the direct graphics-library link and resolves typed GLES calls
+through SDL on the rendering thread. Missing entry points fail with a named
+error. The default build and released package retain their original linkage.
+
+Run `bash scripts/test_gles_dispatch.sh` for a Mesa/SDL pixel-readback check.
+Inspect the candidate with `readelf -d`: no direct Mali/GLES/EGL dependency
+should remain. SDL itself still needs a working firmware graphics stack.
+Host smoke tests do not establish H700 performance or other firmware support;
+keep the known-working release until hardware comparisons pass.
