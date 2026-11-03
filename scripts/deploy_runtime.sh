@@ -9,7 +9,7 @@ if [[ -n ${SSH_CONTROL_SOCKET:-} ]]; then ssh_args+=(-S "$SSH_CONTROL_SOCKET"); 
 readelf -h "$runtime_binary" | grep -q 'Machine:.*AArch64'
 # This updater assumes the complete ReConflict package was installed first.
 # Fail before changing anything if its new frontend/importer is absent.
-ssh "${ssh_args[@]}" "$target" 'test -x /mnt/sdcard/ports/desert-storm/desert-storm-launcher.aarch64 && test -f /mnt/sdcard/ports/desert-storm/prepare_game.py && test -f /mnt/sdcard/ports/desert-storm/game-files.sha256' || {
+ssh "${ssh_args[@]}" "$target" 'test -x /mnt/sdcard/ports/desert-storm/desert-storm-launcher.aarch64 && test -x /mnt/sdcard/ports/desert-storm/prepare-game.aarch64 && test -f /mnt/sdcard/ports/desert-storm/game-files.sha256' || {
   echo 'Install the complete ReConflict runtime package before using this binary updater.' >&2; exit 1;
 }
 gzip -1 -c "$runtime_binary" |

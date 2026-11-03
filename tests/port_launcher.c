@@ -52,6 +52,8 @@ static int scripted_poll(SDL_Event *e){
    else if(step<2*graphics_count+5)key=SDL_CONTROLLER_BUTTON_DPAD_DOWN;
    else {assert(selected==graphics_count+2);key=SDL_CONTROLLER_BUTTON_A;}
   }
+ } else if(scenario==7&&page==OPTIONS){
+  key=SDL_CONTROLLER_BUTTON_B;
  } else if(scenario==6&&page==OPTIONS){
   if(step==0)key=SDL_CONTROLLER_BUTTON_DPAD_UP;
   else if(step==1){assert(frame_cap==60);key=SDL_CONTROLLER_BUTTON_A;}
@@ -67,28 +69,41 @@ static int scripted_poll(SDL_Event *e){
  step++;next_action=now+80;return 1;
 }
 int main(int argc,char**argv){
- assert(argc==2);scenario=atoi(argv[1]);
+ assert(argc==2||argc==3);scenario=atoi(argv[1]);
  char root[]="/tmp/reconflict-launcher-test-XXXXXX";assert(mkdtemp(root));assert(!chdir(root));
  if(scenario>=4){assert(!mkdir("config",0755));FILE*c=fopen("config/graphics.cfg","w");assert(c);fputs("Shadows=0\n",c);fclose(c);}
- FILE*f=fopen("prepare_game.py","w");assert(f);
- fprintf(f,"from pathlib import Path\nimport sys,time\np=Path('calls')\nn=p.read_text() if p.exists() else ''\np.write_text(n+('delete' if '--delete-installer' in sys.argv else 'prepare')+'\\n')\nPath('started').touch()\n");
- if(scenario==2)fputs("time.sleep(60)\n",f);
- if(scenario>=4)fputs("sys.exit(0)\n",f);
- else if(scenario==3)fputs("sys.exit(0 if n else 1)\n",f);
- else fputs("sys.exit(0 if '--delete-installer' in sys.argv else 10)\n",f);
- fclose(f);
+ FILE*f;
+ if(scenario==7){
+  assert(argc==3);assert(!symlink(argv[2],"prepare-game.aarch64"));
+  assert(!mkdir("data",0755));f=fopen("data/test.dat","w");assert(f);fputs("fixture",f);fclose(f);
+  f=fopen("game-files.sha256","w");assert(f);fputs("f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d  test.dat\n",f);fclose(f);
+ }else{
+ f=fopen("prepare-game.aarch64","w");assert(f);
+ fputs("#!/bin/sh\nold=0\n[ ! -f calls ] || old=1\ncase \"$*\" in *--delete-installer*) action=delete ;; *) action=prepare ;; esac\nprintf '%s\\n' \"$action\" >> calls\ntouch started\n",f);
+ if(scenario==2)fputs("exec sleep 60\n",f);
+ if(scenario>=4)fputs("exit 0\n",f);
+ else if(scenario==3)fputs("[ \"$old\" = 1 ] && exit 0; exit 1\n",f);
+ else fputs("[ \"$action\" = delete ] && exit 0; exit 10\n",f);
+ fclose(f);assert(!chmod("prepare-game.aarch64",0755));
+ }
  char*args[]={"launcher","--root",root,"--handoff",NULL};
  setenv("SDL_VIDEODRIVER","offscreen",1);started=SDL_GetTicks();
  int code=launcher_main(4,args);assert(code==(scenario==0?20:(scenario==5||scenario==6)?21:0));
+ if(scenario!=7){
  f=fopen("calls","r");assert(f);char calls[80]={0};assert(fread(calls,1,sizeof calls-1,f)>0);fclose(f);
  assert(!strcmp(calls,scenario==1?"prepare\ndelete\n":scenario==3?"prepare\nprepare\n":"prepare\n"));
+ }else{
+  assert(!access("data-ready.native",F_OK));unlink("data-ready.native");
+  unlink("data/test.dat");rmdir("data");unlink("game-files.sha256");
+  unlink(".install.lock");unlink("install-status.txt");
+ }
  if(scenario==0){assert(!load_fps()&&fps==0);unlink("config/launcher.cfg");unlink("config/graphics.cfg");unlink("config/launcher.cfg");rmdir("config");}
  if(scenario==6){assert(!load_fps()&&fps==1&&frame_cap==30);}
  if(scenario>=4){DSGraphicsConfig checked;ds_configuration_defaults(&checked);assert(ds_configuration_load(&checked)==1);
   assert(checked.value[2]==(unsigned)(scenario==5));
   if(scenario==4){char original[32]={0};f=fopen("config/graphics.cfg","r");assert(fread(original,1,31,f)==10);fclose(f);assert(!strcmp(original,"Shadows=0\n"));}
   unlink("config/graphics.cfg");unlink("config/launcher.cfg");rmdir("config");}
- unlink("prepare_game.py");unlink("calls");unlink("started");assert(!chdir("/tmp"));assert(!rmdir(root));
+ unlink("prepare-game.aarch64");unlink("calls");unlink("started");assert(!chdir("/tmp"));assert(!rmdir(root));
  printf("PASS launcher flow %d: controller navigation, resize, child handoff\n",scenario);
  return 0;
 }

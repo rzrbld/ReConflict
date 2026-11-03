@@ -116,8 +116,8 @@ static void start_worker(int remove_installer){
  worker=fork();
  if(worker==0){
   setpgid(0,0);
-  if(remove_installer)execlp("python3","python3","./prepare_game.py","--root",".","--delete-installer",(char*)NULL);
-  else execlp("python3","python3","./prepare_game.py","--root",".",(char*)NULL);
+  if(remove_installer)execl("./prepare-game.aarch64","prepare-game.aarch64","--root",".","--delete-installer",(char*)NULL);
+  else execl("./prepare-game.aarch64","prepare-game.aarch64","--root",".",(char*)NULL);
   _exit(127);
  }
  if(worker<0){page=ERROR_PAGE;snprintf(message,sizeof message,"COULD NOT START IMPORTER");}
@@ -292,7 +292,7 @@ int main(int argc,char**argv){
    read_progress();int status;pid_t result=worker>0?waitpid(worker,&status,WNOHANG):0;
    if(result==worker&&worker>0){worker=-1;read_progress();int code=WIFEXITED(status)?WEXITSTATUS(status):1;
     if(!exit_requested){selected=0;page=code==10?DELETE_PROMPT:ERROR_PAGE;if(code==0)graphics_open();
-     if(code==127)snprintf(message,sizeof message,"PYTHON3 MISSING. CHECK PORT REQUIREMENTS.");
+     if(code==127)snprintf(message,sizeof message,"IMPORT HELPER MISSING. REINSTALL PACKAGE.");
      if(deleting&&code==0)snprintf(message,sizeof message,"INSTALLER DELETED");}}
   }else{
    int count=page==OPTIONS?graphics_count+4:2;selected=(selected+move+count)%count;

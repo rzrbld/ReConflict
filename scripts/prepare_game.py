@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transactional first-run import, invoked by the SDL launcher beside the game.
+"""Legacy development reference; not invoked by the native launcher or packaged.
 
 Exit 0: existing data ready; 10: newly imported (offer installer deletion);
 1: error; 130: cancelled. Never executes the Windows installer.

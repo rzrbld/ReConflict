@@ -6,14 +6,15 @@ Run all commands from the repository root. Players should use a runtime release;
 these instructions are for development. Your own supported game files are required.
 
 
-Build the SDL launcher on Linux with a C compiler, SDL2 development headers and
+Build the SDL launcher on Linux with C and C++17 compilers, SDL2 development headers and
 `pkg-config`:
 
 ```sh
 bash scripts/build_port_launcher.sh
 SDL_VIDEODRIVER=offscreen build/port-launcher/launcher-host \
   --root . --preview options --screenshot /tmp/reconflict-menu.bmp
-python3 tests/prepare_game.py
+bash scripts/test_native_import.sh
+bash scripts/test_port_launcher.sh
 ```
 
 ### ARM toolchain and game build
@@ -84,7 +85,8 @@ bash scripts/build_port_launcher.sh --cross
 python3 scripts/fetch_innoextract.py
 version="v$(date -u +%Y%m%d-%H%M%S)"
 python3 scripts/package_port.py --binary /path/to/selected-game.aarch64 \
-  --version "$version" --output "dist/reconflict-portmaster-$version.zip"
+  --version "$version" --output "dist/reconflict-portmaster-$version.zip" \
+  --screenshot /path/to/gameplay.png --submission-dir build/portmaster-stage
 python3 scripts/audit_public_tree.py --export dist/reconflict-source.zip
 ```
 
@@ -93,7 +95,29 @@ and network access on the build PC. It does not install system packages.
 The handheld needs no compiler or network to import the game. `.gitignore`
 excludes original files, generated game code, binaries, saves, captures and
 internal development/agent documents. Packaging does not publish anything.
-The package script expects the asset-free launcher preview at
-`build/port-launcher/previews/reconflict-menu.png`; produce it with the host
-launcher's `--preview options --screenshot` option and convert its BMP to PNG.
+Pass an actual gameplay PNG with `--screenshot PATH`: 4:3, at least 640x480.
+Do not use the launcher preview or extracted game artwork. Images stay outside
+this source repository. `--submission-dir DIR` additionally stages
+`DIR/ports/reconflict/` for PortMaster review. Validate a built ZIP with
+`python3 scripts/check_port_package.py PATH.zip`.
+Submission still needs documented community/firmware testing; see
+[the packaging audit](PORTMASTER.md).
 
+
+## Native importer
+
+`bash scripts/build_port_launcher.sh` also builds the native C++17 importer.
+Use `--cross` for both ARM binaries. Outputs are
+`build/native-import/prepare-game.aarch64` and
+`build/port-launcher/desert-storm-launcher.aarch64`. The importer statically links
+the C++ support libraries and uses the firmware libc (glibc 2.36 or newer for
+the supplied importer; the tested H700 firmware has 2.38). The runtime ZIP contains
+no Python scripts and needs no Python interpreter. Development/translation and
+packaging tools may still use Python on the build PC.
+
+The importer implements streaming SHA-256, locked transactional extraction,
+progress/status files, cancellation and explicit installer deletion. The native
+extractor remains the bundled innoextract executable. `--source DIR` imports an
+installed game folder into the port's `data/`; `--check-only` verifies it without
+copying. Tests use synthetic data and a test-only build; checksum overrides are
+not compiled into the distributed binary.

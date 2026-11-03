@@ -7,7 +7,7 @@ Supply your own English GOG Windows 1.0 build21657 installer:
 setup_conflict_-_desert_storm_1.0_(21657).exe
 Place it beside desert-storm.aarch64. The SDL frontend extracts and verifies
 required files, then asks whether to keep or delete the installer.
-Allow 2 GiB free before copying the installer. Python3.9+ is required.
+Allow 2 GiB free before copying the installer. No Python interpreter is required.
 
 The single ReConflict Options window contains graphics settings and the FPS
 counter toggle. Save and Run writes the settings and starts the game; Cancel
