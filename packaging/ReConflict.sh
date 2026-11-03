@@ -3,7 +3,9 @@
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 if [ -z "${controlfolder:-}" ]; then
     for candidate in /opt/system/Tools/PortMaster /opt/tools/PortMaster \
-        "$XDG_DATA_HOME/PortMaster" /mnt/mmc/MUOS/PortMaster /roms/ports/PortMaster; do
+        "$XDG_DATA_HOME/PortMaster" /mnt/mmc/MUOS/PortMaster \
+        /roms/ports/PortMaster /roms/tools/PortMaster /roms2/tools/PortMaster \
+        /userdata/system/PortMaster /userdata/roms/ports/PortMaster; do
         if [ -f "$candidate/control.txt" ]; then controlfolder=$candidate; break; fi
     done
 fi
@@ -37,10 +39,13 @@ if grep -q 'Name="Deeplay-keys"' /proc/bus/input/devices && [ -f /usr/lib/gameco
     mapping=$(grep -m1 ',Deeplay-keys,' /usr/lib/gamecontrollerdb.txt)
     [ -z "$mapping" ] || export SDL_GAMECONTROLLERCONFIG="$mapping"
 fi
+export LD_LIBRARY_PATH="$GAMEDIR/libs.${DEVICE_ARCH:-aarch64}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export DS_PAD_CONFIG="$GAMEDIR/controller-buttons.cfg"
 # muOS's ALSA default is a PipeWire plugin; SSH sessions need its socket path.
-if [ -S /run/pipewire-0 ]; then export XDG_RUNTIME_DIR=/run; fi
-export SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-alsa}
+if [ "${CFW_NAME:-}" = muOS ]; then
+    if [ -S /run/pipewire-0 ]; then export XDG_RUNTIME_DIR=/run; fi
+    export SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-alsa}
+fi
 # SSH launches bypass ext-general.sh. Inherit the same device display values
 # when that firmware handoff has not already supplied them.
 if [ "${CFW_NAME:-}" = muOS ] && [ -d /run/muos/device/sdl ]; then
@@ -82,6 +87,8 @@ ds_finish() {
     elif declare -F pm_message_end >/dev/null; then pm_message_end || true; fi
 }
 trap ds_finish EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 if [ -f "$GAMEDIR/cpu-session.sh" ]; then
     source "$GAMEDIR/cpu-session.sh"
     ds_cpu_begin

@@ -22,7 +22,7 @@ visual confirmation across actual stage loads is pending.
 - **Power loss during import:** your installer remains. With no import running,
   remove abandoned `.import-*` folders inside the port to reclaim space, then
   retry. Normal cancellation cleans its own staging folder.
-- **Immediate exit:** check `log.txt`, Python availability and the ARM64 package.
+- **Immediate exit:** check `log.txt`, the native import helper and the ARM64 package.
   Launch through PortMaster for firmware display/controller setup and muOS menu
   suspension.
 - **FPS setting:** `config/launcher.cfg` contains `fps_overlay=1` or `0`.
@@ -33,16 +33,24 @@ visual confirmation across actual stage loads is pending.
 ## Manual import from an installed Windows copy
 
 Already have the Windows game installed? Instead of supplying an installer,
-copy and validate its files on a PC with Python:
+use the native helper to validate and copy its files.
+
+On a PC, build the native helper with `bash scripts/build_native_import.sh`,
+then use an existing port directory as the root:
 
 ```sh
-python3 scripts/import_game_data.py /path/to/installed/game /path/to/port/data
+build/native-import/prepare-game-host --root /path/to/port \
+  --source /path/to/installed/game
 ```
 
-The destination must be absent or empty. Only the supported version is accepted;
-saves/configuration are not imported. When using the copy of this script in the
-runtime package, add `--manifest game-files.sha256` from the port directory.
+On ARM64 Linux, use `./prepare-game.aarch64 --root . --source /path/to/game`
+from the port directory. Add `--check-only` to verify the source without copying.
+The root must contain `game-files.sha256`, and its `data/` must be absent or empty.
+Only files listed in the manifest are copied; source saves/settings stay untouched.
 
+After upgrading from the Python importer, the first launch re-verifies existing
+data once and creates `data-ready.native`. Later unchanged launches use the fast
+cache. The old `data-ready.json` is harmless and is no longer used.
 
 ## Custom controls
 

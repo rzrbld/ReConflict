@@ -11,24 +11,32 @@ and download the English offline Windows installer:
 ReConflict runs translated game code on ARM using your original game files.
 The download contains no original Windows executable or game assets.
 
+Thanks to **Pivotal Games**, the original developer, for creating Conflict: Desert Storm.
+
 ## Download
 
-**This is the experimental portable-GLES source branch.** For the tested H700
-package, use the main-renderer download below.
+**This is the experimental portable-GLES source branch.** For H700/Mali, use
+the main-renderer download below.
 
-Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261028-140957)**
-for the tested device. Download the `reconflict-portmaster-…zip` asset, **not**
+Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-154650)**
+for the H700/Mali target. The latest launcher update still needs device testing. Download the `reconflict.zip` asset, **not**
 GitHub's “Source code” archive.
 
-A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261028-140957-gles)
+A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-154650-gles)
 is available for testing. Its gameplay and compatibility on other firmware are
 not yet verified. Both downloads remain prereleases.
 
 ## Install and play
 
-You need PortMaster, Python 3.9+ on the handheld, and **2 GiB free before copying
-the installer**. The extractor is included; no PC extraction is required by the
+You need 64-bit PortMaster firmware with glibc 2.36 or newer, SDL2/SDL2_ttf,
+and **2 GiB free before copying the installer**. The main build requires the
+Mali driver (`libmali.so.0`); it is not a universal ARM64 build.
+The launcher and importer are native binaries; **Python is not needed on the handheld**.
+The extractor is included; no PC extraction is required by the
 launcher. A complete fresh import has not yet been verified end-to-end on H700.
+
+On other firmware, use its configured `ports` directory for the folder and scripts.
+The following paths are specific to muOS:
 
 1. Extract the runtime ZIP on your PC.
 2. Copy its `reconflict` folder into `/mnt/sdcard/ports/`.

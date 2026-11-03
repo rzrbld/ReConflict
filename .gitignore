@@ -118,3 +118,7 @@ core
 !/manuals/TROUBLESHOOTING.md
 !/manuals/TECHNICAL.md
 !/manuals/CREDITS.md
+
+!/probe/prepare_game.cpp
+
+!/manuals/PORTMASTER.md

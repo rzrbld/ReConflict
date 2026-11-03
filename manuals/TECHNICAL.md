@@ -20,7 +20,7 @@ layout. Handheld import neither compiles the game nor executes the installer.
 Only ARM64 muOS on RG40XX-H has been exercised in gameplay. The H700 build links
 to `libmali.so.0`, SDL2 and SDL2_ttf; a Mali GPU alone does not guarantee that
 compatible libraries are present. It requests GLES 2.0 with depth/stencil support.
-Python 3.9+ is needed for import and verification, including existing installations.
+Import and verification use the bundled native helper; no Python is needed at runtime.
 The package conservatively requires glibc 2.36. ARM32/x86 need separate builds.
 
 The `experiment/portable-gles` branch loads GLES functions through SDL and removes
