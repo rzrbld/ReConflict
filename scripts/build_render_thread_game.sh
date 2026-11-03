@@ -104,7 +104,7 @@ input_edges=${DS_INPUT_EDGE_FIX:-1}
 [[ "$input_edges" == 0 || "$input_edges" == 1 ]] || exit 2
 portable_gles=${DS_PORTABLE_GLES:-0}
 [[ "$portable_gles" == 0 || "$portable_gles" == 1 ]] || exit 2
-image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
+image=${CROSS_IMAGE:-reconflict-cross:bookworm}
 docker run --rm --network none --read-only --tmpfs /tmp \
   -e DS_INPUT_EDGE_FIX="$input_edges" \
   -e DS_PORTABLE_GLES="$portable_gles" \
@@ -247,7 +247,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     fi
     aarch64-linux-gnu-gcc -g -rdynamic -o "$out/game-render-thread.aarch64.new" \
       "${objects[@]}" "${wrappers[@]}" -Wl,--start-group "${archives[@]}" -Wl,--end-group \
-      -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf "${graphics_libs[@]}" -lm -lpthread -ldl "${profile_libs[@]}"
+      -L/src/build/mali-link -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf "${graphics_libs[@]}" -lm -lpthread -ldl "${profile_libs[@]}"
     mv "$out/game-render-thread.aarch64.new" "$out/game-render-thread.aarch64"
   '
 sha256sum -c "$output/EXPERIMENT-SHA256SUMS"

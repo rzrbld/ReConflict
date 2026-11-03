@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 bash scripts/build_native_import.sh "${1:-}"
 mkdir -p build/port-launcher
 if [[ ${1:-} == --cross ]]; then
- image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
+ image=${CROSS_IMAGE:-reconflict-cross:bookworm}
  docker run --rm --network none --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
    -v "$PWD:/src:ro" -v "$PWD/build/port-launcher:/out:rw" --workdir /src "$image" \
    bash -eu -o pipefail -c 'aarch64-linux-gnu-gcc -std=gnu11 -O2 -Wall -Wextra -Werror -mcpu=cortex-a53 \

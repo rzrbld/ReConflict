@@ -18,11 +18,11 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 **This is the experimental portable-GLES source branch.** For H700/Mali, use
 the main-renderer download below.
 
-Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-154650)**
-for the H700/Mali target. The latest launcher update still needs device testing. Download the `reconflict.zip` asset, **not**
+Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-165228)**
+for the H700/Mali target. The freshly rebuilt executable and launcher still need device testing. Download the `reconflict.zip` asset, **not**
 GitHub's “Source code” archive.
 
-A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-154650-gles)
+A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-165228-gles)
 is available for testing. Its gameplay and compatibility on other firmware are
 not yet verified. Both downloads remain prereleases.
 

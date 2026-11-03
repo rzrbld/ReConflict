@@ -15,7 +15,8 @@ source = (ROOT / 'build/translated/desertstorm/functions_0097.c').read_text()
 assert hashlib.sha256(source.encode()).hexdigest() == '5d51050aba1ccbb08b44b5fb320aa511e926fde3d09a1e34a79899202951d9b6'
 archive = ROOT / 'build/render-thread-game/snapshot/build/translated/desertstorm/lifted.aarch64.a'
 obj = subprocess.check_output(['ar', 'p', str(archive), 'functions_0097.aarch64.o'])
-assert hashlib.sha256(obj).hexdigest() == 'a5b729adca1ed51383928c674dd1f25848bb47336bed986d07dbdff4a85e1804'
+# Object bytes vary by toolchain. Source guards below remain mandatory;
+# require the snapshot member to match this clean build instead.
 assert obj == (ROOT / 'build/translated/desertstorm/functions_0097.aarch64.o').read_bytes()
 end = '    _flag_a = (uint32_t)(esi); _flag_b = (uint32_t)(4);'
 regions = []

@@ -8,7 +8,9 @@ source=root/'build/translated/desertstorm/functions_0003.c'
 s=source.read_text();assert sha(s.encode())=='cd206c5fdac90cd32f64ccdd00a954f7fbd3e79616332cf7db3b1af24e8c2be0'
 archive=root/'build/render-thread-game/snapshot/build/translated/desertstorm/lifted.aarch64.a'
 old_obj=subprocess.check_output(['ar','p',str(archive),'functions_0003.aarch64.o'])
-assert sha(old_obj)=='5b222140856256dab973db741a215cc05e3c69cc79b4a9b94067e5d9b8be3299'
+# Object bytes vary by toolchain. Source guards below remain mandatory;
+# require the snapshot member to match this clean build instead.
+assert old_obj == source.with_suffix('.aarch64.o').read_bytes()
 def replace(s,a,b):
     assert s.count(a)==1,a
     return s.replace(a,b)

@@ -5,10 +5,7 @@ import hashlib,shutil
 root=Path(__file__).resolve().parents[1];out=root/'build/present-timing';out.mkdir(exist_ok=True)
 p=root/'build/dense-profiler/d3d8.c';s=p.read_text()
 # Record and validate the exact input stage, without modifying it.
-expected=''
-manifest=root/'build/render-thread-game/variants/length-scalar/EXPERIMENT-SHA256SUMS'
-for line in manifest.read_text().splitlines():
- if line.endswith('  build/dense-profiler/d3d8.c'):expected=line.split()[0]
+expected='5f62dd6b0a9808fc20cb3a404832e1d3733d1c59d0879cd44f75293f28cf0368'
 assert expected and hashlib.sha256(p.read_bytes()).hexdigest()==expected
 s='#include "present_timing.c"\n'+s
 old='''static void overlay_job(void *argument){

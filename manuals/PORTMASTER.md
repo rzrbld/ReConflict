@@ -33,7 +33,9 @@ AmberELEC, dArkOS, ROCKNIX (Mali and Panfrost), Knulli and higher-resolution
 testing remain outstanding. Optional targets are not claimed as tested.
 
 The native-import update has passed PC tests and ARM compilation; H700 was
-unreachable for the new end-to-end import/launch check. Main still links
+unreachable for the new end-to-end import/launch check. The release build now
+regenerates optimized game inputs from public source plus the supported original
+files; rebuilding does not replace the outstanding hardware tests. Main still links
 `libmali.so.0`; the separate portable-GLES experiment needs its own testing.
 No universal device compatibility is claimed. Keep `exp: true`.
 

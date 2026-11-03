@@ -52,6 +52,16 @@ def replace(s, old, new):
     return s.replace(old, new)
 
 s = (snapshot / 'runtime/d3d8.c').read_text()
+# Pacing is applied once, after loading/presentation staging. The baseline now
+# has pacing too; normalize only these known hooks in the generated copy.
+if s.startswith('#include "frame_limiter.h"\n'):
+    s = s.removeprefix('#include "frame_limiter.h"\n')
+    paced = 'SDL_GL_SetSwapInterval(ds_frame_swap_interval(presentation[12]==0x80000000u?0:1))'
+    assert s.count(paced) == 2
+    s = s.replace(paced, 'SDL_GL_SetSwapInterval(presentation[12]==0x80000000u?0:1)')
+    assert s.count('diagnostic_poll();ds_frame_limit_present();ds_fps_overlay_presented();') == 1
+    s = s.replace('diagnostic_poll();ds_frame_limit_present();ds_fps_overlay_presented();',
+                  'diagnostic_poll();ds_fps_overlay_presented();')
 s = replace(s, '#include "win32hle.h"', '#include "win32hle.h"\n#include "render_thread_proxy.h"')
 helpers = '''
 /* Experimental only: producer owns guest/HLE state; worker owns native GL. */
