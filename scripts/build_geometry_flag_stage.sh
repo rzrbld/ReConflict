@@ -22,7 +22,7 @@ printf '%s\n' "$flags -g -mcpu=cortex-a53" > "$out/object-flags.txt"
 "${CC:-cc}" $flags -I"$out/include" "$out/test.c" "$out/geometry_fast.c" "$out/reference.c" -lm -o "$out/test-host"
 "$out/test-host" --disabled > "$out/host-disabled.log"
 "$out/test-host" > "$out/host-differential.log"
-image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
+image=${CROSS_IMAGE:-reconflict-cross:bookworm}
 docker run --rm --network none --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
  -v "$PWD/$out:/out:rw" "$image" bash -eu -o pipefail -c '
  flags="-std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53"

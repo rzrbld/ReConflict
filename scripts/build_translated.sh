@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-image=${CROSS_IMAGE:-sha256:5c811c6c025a934595e16a49bd9c8554eb7c7b33cfdd4d2fcc01672fd6f85e49}
+image=${CROSS_IMAGE:-reconflict-cross:bookworm}
+jobs=${JOBS:-4}
+[[ "$jobs" =~ ^[1-9][0-9]*$ && "$jobs" -le 64 ]] || { echo "JOBS must be 1..64" >&2; exit 1; }
 translated_opt=${TRANSLATED_OPT:-2}
 [[ "$translated_opt" =~ ^[123]$ ]] || { echo 'TRANSLATED_OPT must be 1, 2 or 3' >&2; exit 1; }
 fp_stack_exact=${RECOMP_FP_STACK_EXACT:-1}
@@ -25,13 +27,13 @@ python3 scripts/generate_physics_fast.py
 python3 scripts/patch_physics_fast.py --apply
 python3 scripts/patch_jinvmjt_fast.py --apply
 docker run --rm --network none --read-only --tmpfs /tmp \
-  --user "$(id -u):$(id -g)" -e DS_TRANSLATED_OPT="$translated_opt" -e DS_FP_STACK_EXACT="$fp_stack_exact" \
+  --user "$(id -u):$(id -g)" -e DS_BUILD_JOBS="$jobs" -e DS_TRANSLATED_OPT="$translated_opt" -e DS_FP_STACK_EXACT="$fp_stack_exact" \
   -v "$PWD:/src:ro" -v "$PWD/build/translated:/out:rw" \
   --workdir /src "$image" bash -eu -o pipefail -c '
     export LC_ALL=C
     export DS_TRANSLATED_FLAGS="-O${DS_TRANSLATED_OPT} -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=${DS_FP_STACK_EXACT}"
     printf "Translated flags: %s\n" "$DS_TRANSLATED_FLAGS"
-    find /out -name "*.c" -print0 | sort -z | xargs -0 -P 4 -I {} bash -c '\''
+    find /out -name "*.c" -print0 | sort -z | xargs -0 -P "$DS_BUILD_JOBS" -I {} bash -c '\''
       file=$1
       obj=${file%.c}.aarch64.o
       file_flags=$DS_TRANSLATED_FLAGS

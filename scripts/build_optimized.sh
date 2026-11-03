@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Regenerate every optimized input from this checkout's freshly built baseline.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export CROSS_IMAGE=${CROSS_IMAGE:-reconflict-cross:bookworm}
+bash scripts/prepare_mali_link.sh
+python3 scripts/stage_render_thread_game.py
+python3 scripts/generate_render_proxy.py
+python3 scripts/stage_render_proxy_client_reset.py
+python3 scripts/stage_render_proxy_cacheline.py
+python3 scripts/stage_render_proxy_combined.py
+python3 scripts/stage_worker_wake_batch.py
+bash scripts/build_geometry_flag_stage.sh
+python3 scripts/stage_dense_profiler.py
+python3 scripts/stage_smoke_shader.py
+python3 scripts/stage_fog_shader.py
+python3 scripts/stage_glow_shader.py
+python3 scripts/stage_shader_cache.py
+python3 scripts/stage_index_scan.py
+python3 scripts/stage_rotation_scalar.py
+python3 scripts/stage_length_scalar.py
+python3 scripts/stage_physics_product.py
+python3 scripts/stage_present_timing.py
+python3 scripts/stage_loading_background.py
+python3 scripts/stage_frame_limiter.py
+export DS_RT_PROXY_SOURCE=build/render-thread-stage/wake-batch/render_thread_proxy.c
+export DS_RT_GEOMETRY_SOURCE=build/render-thread-stage/geometry-flags/geometry_fast.c
+export DS_RT_PROFILER_SOURCE=build/dense-profiler/profiler.c
+export DS_RT_SKINNING_SOURCE=probe/skinning_cached_pair.c
+export DS_RT_RENDERER_SOURCE=build/index-scan/d3d8_renderer.c
+export DS_RT_D3D8_SOURCE=build/frame-limit/d3d8.c
+export DS_RT_ROTATION_STAGE=build/rotation-scalar
+export DS_RT_LENGTH_STAGE=build/length-scalar
+export DS_RT_PHYSICS_PRODUCT_STAGE=build/physics-product
+export DS_RT_LOADING_STAGE=build/loading-background
+export DS_RT_BUILD_LABEL=${DS_RT_BUILD_LABEL:-clean-release}
+export DS_INPUT_EDGE_FIX=1
+bash scripts/build_render_thread_game.sh
