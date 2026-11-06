@@ -54,7 +54,23 @@ extern uint32_t g_ebx, g_esi, g_edi, g_ebp;
  * like __ftol receive their argument on the FPU stack from the caller, and the
  * control word persists across calls. A per-function local stack would make every
  * cross-call FPU value read as 0. */
+/* RECOMP_FP_WINDOW=1 (set by the game build): the 8 visible x87 slots are a
+ * window into a large buffer, and push/pop move the window pointer instead of
+ * shifting all 8 slots and shadows. Bit-identical to the shifting model: a
+ * pop zeroes the slot that becomes st(7) and a push discards old st(7).
+ * g_st/g_st_i64 become pointer expressions, so st(i) is still g_st[i]. Every
+ * object in one executable must agree; g_st is not defined in window mode. */
+#if defined(RECOMP_FP_WINDOW) && RECOMP_FP_WINDOW
+#define DS_FPW_SLOTS 4096
+typedef struct { double st[DS_FPW_SLOTS]; int64_t sh[DS_FPW_SLOTS]; } ds_fpw_t;
+extern ds_fpw_t g_fpw;
+extern double  *g_stp;
+#define g_st (g_stp)
+#define DS_FPW_SH(p) ((int64_t *)((char *)(p) + DS_FPW_SLOTS * sizeof(double)))
+#define g_st_i64 DS_FPW_SH(g_stp)
+#else
 extern double   g_st[8];
+#endif
 extern int      g_fp_top;
 extern uint16_t g_fpu_cw;
 
@@ -986,7 +1002,12 @@ static inline uint32_t sse_cmp_pred(double a, double b, int p) {
 #else
 #define RECOMP_SHARED_DATA __attribute__((weak))
 #endif
+#if defined(RECOMP_FP_WINDOW) && RECOMP_FP_WINDOW
+RECOMP_SHARED_DATA ds_fpw_t g_fpw;
+RECOMP_SHARED_DATA double *g_stp = &g_fpw.st[DS_FPW_SLOTS / 2];
+#else
 RECOMP_SHARED_DATA int64_t g_st_i64[8] = {0};
+#endif
 
 static inline void fp_push_impl(double* st, int* top, double val) {
     /* Shift stack down, push new value */
@@ -1009,7 +1030,49 @@ static inline double fp_pop_impl(double* st, int* top) {
  * integer shadows. Retain the original helpers above for reference tests and
  * all other builds; opt-in does not require per-call environment checks or
  * always_inline copies in every generated function. */
-#if defined(__aarch64__) && defined(RECOMP_FP_STACK_EXACT) && RECOMP_FP_STACK_EXACT
+#if defined(RECOMP_FP_WINDOW) && RECOMP_FP_WINDOW
+/* The barrier keeps each pushed/popped value a rounded double at the former
+ * out-of-line call boundary, so FP contraction cannot change results. */
+static inline __attribute__((always_inline)) double ds_fpw_barrier(double v) {
+#if defined(__aarch64__)
+    __asm__("" : "+w"(v));
+#else
+    __asm__("" : "+x"(v));
+#endif
+    return v;
+}
+/* Move the 8 visible slots (and shadows) back to the middle of the buffer. */
+static __attribute__((noinline, cold, unused)) double *ds_fpw_recenter(double *p) {
+    double *c = &g_fpw.st[DS_FPW_SLOTS / 2];
+    memmove(c, p, 8 * sizeof(double));
+    memmove(DS_FPW_SH(c), DS_FPW_SH(p), 8 * sizeof(int64_t));
+    return c;
+}
+static inline __attribute__((always_inline)) void ds_fpw_push(double v) {
+    double *p = g_stp;
+    v = ds_fpw_barrier(v);
+    if (__builtin_expect(p <= &g_fpw.st[16], 0)) p = ds_fpw_recenter(p);
+    p--;
+    memcpy(p, &v, 8);
+    DS_FPW_SH(p)[0] = 0;
+    g_stp = p;
+    g_fp_top++;
+}
+static inline __attribute__((always_inline)) double ds_fpw_pop(void) {
+    double *p = g_stp, v;
+    uint64_t zero = 0;
+    memcpy(&v, p, 8);
+    if (__builtin_expect(p >= &g_fpw.st[DS_FPW_SLOTS - 24], 0)) p = ds_fpw_recenter(p);
+    p++;
+    memcpy(p + 7, &zero, 8);
+    DS_FPW_SH(p)[7] = 0;
+    g_stp = p;
+    g_fp_top--;
+    return ds_fpw_barrier(v);
+}
+#define fp_push(val) ds_fpw_push((val))
+#define fp_pop()     ds_fpw_pop()
+#elif defined(__aarch64__) && defined(RECOMP_FP_STACK_EXACT) && RECOMP_FP_STACK_EXACT
 #include "fp_stack_exact.h"
 #define fp_push(val) ds_fp_stack_push_exact(_st, g_st_i64, &_fp_top, (val))
 #define fp_pop()     ds_fp_stack_pop_exact(_st, g_st_i64, &_fp_top)

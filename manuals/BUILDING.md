@@ -104,6 +104,7 @@ bash scripts/test_port_launcher.sh
 bash scripts/test_rotation_scalar.sh
 bash scripts/test_length_scalar.sh
 bash scripts/test_physics_product.sh
+bash scripts/test_fp_window.sh
 ```
 
 ## Package and submission staging

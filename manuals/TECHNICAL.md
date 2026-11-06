@@ -44,6 +44,12 @@ The H700 build combines several targeted optimizations:
 - **Native math helpers:** accelerate skinning, matrices, rotations, vector
   lengths and culling. Checked fast paths preserve the expected arithmetic
   order and guest state, with fallbacks for unsupported cases.
+- **Pointer-window x87 stack:** translated floating-point code keeps the eight
+  x87 slots as a window into a larger buffer, so each push/pop moves a pointer
+  instead of copying all eight values and their integer shadows. Results are
+  bit-identical to the previous model. On H700, the two-truck explosion in
+  Rescue averaged about 17% higher FPS during the blast (16.2 to 18.9) and 7%
+  over 12 seconds (20.8 to 22.3), across three paired runs.
 - **Bounded index scans and dispatch caching:** reduce repeated work when
   submitting geometry and resolving translated function calls.
 

@@ -15,8 +15,8 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 
 ## Download
 
-Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-165228)**
-for the H700/Mali target. The freshly rebuilt executable and launcher still need device testing. Download the `reconflict.zip` asset, **not**
+Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-211044)**
+for the H700/Mali target. Download the `reconflict.zip` asset, **not**
 GitHub's “Source code” archive.
 
 A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-165228-gles)
@@ -57,7 +57,7 @@ A frame cap limits fast scenes; it cannot speed up slow ones.
 is a separate detail-texture effect; these are independent settings.
 
 Expect roughly **20–30 FPS in busy gameplay**, with higher rates in light scenes.
-Large explosions can briefly dip into the teens. Performance varies, and the
+Large explosions can briefly dip into the high teens. Performance varies, and the
 whole game has not been verified. The controller update improves missed quick
 fire-button presses.
 

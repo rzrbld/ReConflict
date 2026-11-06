@@ -118,7 +118,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
   -v "$PWD/build/render-thread-game:/experiment:rw" --workdir /src "$image" bash -eu -o pipefail -c '
     frozen=/experiment/snapshot
     out=/experiment/$DS_RT_OUTPUT
-    flags="-std=gnu11 -O1 -g -DDS_HEAP_START=0x40000000u -I/src/probe -I$frozen/runtime -I$frozen/third_party/pcrecomp/runtime/recomp32 -I$frozen/third_party/pcrecomp/runtime/win32hle -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2"
+    flags="-std=gnu11 -O1 -g -DDS_HEAP_START=0x40000000u -DRECOMP_FP_WINDOW=1 -I/src/probe -I$frozen/runtime -I$frozen/third_party/pcrecomp/runtime/recomp32 -I$frozen/third_party/pcrecomp/runtime/win32hle -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2"
     for name in d3d8 d3d8_renderer fps_overlay game_main; do
       optimize=""
       [[ "$name" != d3d8 ]] || optimize="-O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53"
@@ -133,7 +133,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
       -c "/src/$DS_RT_PROXY_SOURCE" -o "$out/obj/render_thread_proxy.o"
     rm -f "$out/obj/ds_geometry_fast.o"
     if [[ -n "$DS_RT_GEOMETRY_SOURCE" ]]; then
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -g -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53 \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -g -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53 -DRECOMP_FP_WINDOW=1 \
         -I"$frozen/runtime" -I"$frozen/third_party/pcrecomp/runtime/recomp32" \
         -c "/src/$DS_RT_GEOMETRY_SOURCE" -o "$out/obj/ds_geometry_fast.o"
     fi
@@ -146,7 +146,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     fi
     rm -f "$out/obj/ds_skinning_fast.o"
     if [[ -n "$DS_RT_SKINNING_SOURCE" ]]; then
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -g -mcpu=cortex-a53 -ffp-contract=off \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -g -mcpu=cortex-a53 -ffp-contract=off -DRECOMP_FP_WINDOW=1 \
         -I"$frozen/runtime" -I"$frozen/third_party/pcrecomp/runtime/recomp32" \
         -c "/src/$DS_RT_SKINNING_SOURCE" -o "$out/obj/ds_skinning_fast.o"
     fi
@@ -156,10 +156,10 @@ docker run --rm --network none --read-only --tmpfs /tmp \
       mkdir -p "$out/rotation"
       # Other functions retain the original unit compile flags. Only the new
       # scalar helper disables contraction and enables explicit rounding.
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -Werror=implicit-function-declaration \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 -Werror=implicit-function-declaration \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/functions_0071.c" -o "$out/rotation/functions_0071.aarch64.o"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -frounding-math -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -frounding-math -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/rotation_scalar.c" -o "$out/obj/ds_rotation_scalar.o"
       cp "$frozen/build/translated/desertstorm/lifted.aarch64.a" "$out/rotation/lifted.aarch64.a"
@@ -169,10 +169,10 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     if [[ -n "$DS_RT_LENGTH_STAGE" ]]; then
       stage=/src/$DS_RT_LENGTH_STAGE
       mkdir -p "$out/rotation"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -Werror=implicit-function-declaration \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 -Werror=implicit-function-declaration \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/functions_0065.c" -o "$out/rotation/functions_0065.aarch64.o"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -frounding-math -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -frounding-math -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/length_scalar.c" -o "$out/obj/ds_length_scalar.o"
       if [[ -z "$DS_RT_ROTATION_STAGE" ]]; then
@@ -184,10 +184,10 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     if [[ -n "$DS_RT_PHYSICS_PRODUCT_STAGE" ]]; then
       stage=/src/$DS_RT_PHYSICS_PRODUCT_STAGE
       mkdir -p "$out/rotation"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -Werror=implicit-function-declaration \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 -Werror=implicit-function-declaration \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/functions_0097.c" -o "$out/rotation/functions_0097.aarch64.o"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -ffp-contract=off -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/physics_product.c" -o "$out/obj/ds_physics_product.o"
       if [[ -z "$DS_RT_ROTATION_STAGE" && -z "$DS_RT_LENGTH_STAGE" ]]; then
@@ -198,7 +198,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     if [[ -n "$DS_RT_LOADING_STAGE" ]]; then
       stage=/src/$DS_RT_LOADING_STAGE
       mkdir -p "$out/rotation"
-      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -Werror=implicit-function-declaration \
+      aarch64-linux-gnu-gcc -std=gnu11 -O2 -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=1 -DRECOMP_FP_WINDOW=1 -Werror=implicit-function-declaration \
         -I"$frozen/third_party/pcrecomp/runtime/recomp32" -I"$frozen/runtime" \
         -c "$stage/functions_0003.c" -o "$out/rotation/functions_0003.aarch64.o"
       if [[ -z "$DS_RT_ROTATION_STAGE" && -z "$DS_RT_LENGTH_STAGE" && -z "$DS_RT_PHYSICS_PRODUCT_STAGE" ]]; then

@@ -9,7 +9,7 @@ image=${CROSS_IMAGE:-reconflict-cross:bookworm}
 docker run --rm --network none --read-only --tmpfs /tmp \
   --user "$(id -u):$(id -g)" -v "$PWD:/src:ro" -v "$PWD/build/game:/out:rw" --workdir /src \
   "$image" bash -eu -o pipefail -c '
-    flags="-std=gnu11 -O1 -g -DDS_HEAP_START=0x40000000u -I/src/runtime -I/src/probe -I/src/third_party/pcrecomp/runtime/recomp32 -I/src/third_party/pcrecomp/runtime/win32hle -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2"
+    flags="-std=gnu11 -O1 -g -DDS_HEAP_START=0x40000000u -DRECOMP_FP_WINDOW=1 -I/src/runtime -I/src/probe -I/src/third_party/pcrecomp/runtime/recomp32 -I/src/third_party/pcrecomp/runtime/win32hle -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2"
     for src in /src/third_party/pcrecomp/runtime/win32hle/*.c; do
       [[ "$src" == *_selftest.c ]] && continue
       name=$(basename "$src" .c)

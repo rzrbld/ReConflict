@@ -19,7 +19,7 @@ ds_muos_resume() {
     ds_muos_owned=0
 }
 ds_muos_suspend() {
-    [ -d /opt/muos/extra ] || return 0
+    [ -d /opt/muos/extra ] || [ -d /opt/muos/frontend ] || return 0
     mkdir -p "$ds_muos_root/tmp"
     # A stale file is recoverable; do not overwrite another active owner's list.
     if [ -s "$ds_muos_state" ]; then
@@ -34,6 +34,7 @@ ds_muos_suspend() {
         args=$(tr '\000' ' ' < "$entry/cmdline" 2>/dev/null)
         case "$exe:$args" in
             /opt/muos/extra/mux*:*) ;;
+            /opt/muos/frontend/muxfrontend:*) ;;
             *:'/bin/sh /opt/muos/script/mux/frontend.sh '*) ;;
             *) continue ;;
         esac

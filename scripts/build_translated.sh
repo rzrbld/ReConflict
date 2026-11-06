@@ -31,7 +31,7 @@ docker run --rm --network none --read-only --tmpfs /tmp \
   -v "$PWD:/src:ro" -v "$PWD/build/translated:/out:rw" \
   --workdir /src "$image" bash -eu -o pipefail -c '
     export LC_ALL=C
-    export DS_TRANSLATED_FLAGS="-O${DS_TRANSLATED_OPT} -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=${DS_FP_STACK_EXACT}"
+    export DS_TRANSLATED_FLAGS="-O${DS_TRANSLATED_OPT} -fno-strict-aliasing -fwrapv -mcpu=cortex-a53 -DRECOMP_FP_STACK_EXACT=${DS_FP_STACK_EXACT} -DRECOMP_FP_WINDOW=1"
     printf "Translated flags: %s\n" "$DS_TRANSLATED_FLAGS"
     find /out -name "*.c" -print0 | sort -z | xargs -0 -P "$DS_BUILD_JOBS" -I {} bash -c '\''
       file=$1

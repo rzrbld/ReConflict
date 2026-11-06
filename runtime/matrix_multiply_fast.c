@@ -52,7 +52,7 @@ int ds_matrix_multiply_fast_4ac1fb(void){
      * after each outer iteration, leaving top+16 and the last row/column. */
     for(unsigned i=0;i<4;i++)g_st[i]=right_only?(double)b[15-i*4]:(double)a[15-i];
     for(unsigned i=4;i<8;i++)g_st[i]=0.;
-    memset(g_st_i64,0,sizeof g_st_i64);g_fp_top+=16;
+    memset(g_st_i64,0,8*sizeof(int64_t));g_fp_top+=16;
     g_eax=dst;g_ecx=right_only?left:left+64;g_edx=same?s-68:right;
     g_flag_k=FK_INC;g_flag_a=UINT32_MAX;g_flag_b=1;
     g_flag_cf=right_only?1u:(uint32_t)(right<dst);
