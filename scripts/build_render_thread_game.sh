@@ -215,6 +215,8 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     for obj in "$frozen"/build/game/obj/*.o; do
       case "${obj##*/}" in ds_d3d8.o|ds_d3d8_renderer.o|ds_fps_overlay.o|ds_game_main.o) continue;; esac
       if [[ "${obj##*/}" == ds_dinput8.o && "$DS_INPUT_EDGE_FIX" == 1 ]]; then continue; fi
+      # GLES is resolved through SDL; the relink compiles its own gles_dispatch.o below.
+      if [[ "${obj##*/}" == ds_gles_dispatch.o ]]; then continue; fi
       if [[ "${obj##*/}" == ds_loading_background.o && -n "$DS_RT_LOADING_STAGE" ]]; then continue; fi
       if [[ "${obj##*/}" == ds_geometry_fast.o && -n "$DS_RT_GEOMETRY_SOURCE" ]]; then continue; fi
       if [[ "${obj##*/}" == ds_profiler.o && -n "$DS_RT_PROFILER_SOURCE" ]]; then continue; fi
@@ -235,9 +237,13 @@ docker run --rm --network none --read-only --tmpfs /tmp \
         archives+=("$out/rotation/lifted.aarch64.a")
       else archives+=("$module/lifted.aarch64.a");fi
     done
+    # Resolve GLES through the current SDL context: no vendor GLES/EGL/Mali link.
+    aarch64-linux-gnu-gcc -std=gnu11 -O2 -I/src/probe -I/src/build/sdk-include -I/src/build/sdk-include/SDL2 -I/usr/include/SDL2 \
+      -c /src/runtime/gles_dispatch.c -o "$out/gles_dispatch.o"
+    objects+=("$out/gles_dispatch.o")
     aarch64-linux-gnu-gcc -g -rdynamic -o "$out/game-render-thread.aarch64.new" \
       "${objects[@]}" "${wrappers[@]}" -Wl,--start-group "${archives[@]}" -Wl,--end-group \
-      -L/src/build/mali-link -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf -lGLESv2 -lm -lpthread -ldl "${profile_libs[@]}"
+      -L/src/build/mali-link -L"$frozen/build/target-libs" -Wl,--allow-shlib-undefined -lSDL2 -lSDL2_ttf -lm -lpthread -ldl "${profile_libs[@]}"
     mv "$out/game-render-thread.aarch64.new" "$out/game-render-thread.aarch64"
   '
 sha256sum -c "$output/EXPERIMENT-SHA256SUMS"

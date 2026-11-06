@@ -35,8 +35,8 @@ testing remain outstanding. Optional targets are not claimed as tested.
 The native-import update has passed PC tests and ARM compilation; H700 was
 unreachable for the new end-to-end import/launch check. The release build now
 regenerates optimized game inputs from public source plus the supported original
-files; rebuilding does not replace the outstanding hardware tests. Main still links
-`libmali.so.0`; the separate portable-GLES experiment needs its own testing.
+files; rebuilding does not replace the outstanding hardware tests. GLES is loaded
+through SDL, so Panfrost firmware is a candidate, but it is untested.
 No universal device compatibility is claimed. Keep `exp: true`.
 
 Distribution of translated proprietary game logic and the appropriate upstream

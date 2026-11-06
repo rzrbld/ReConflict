@@ -15,19 +15,15 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 
 ## Download
 
-Use the **[H700/Mali runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-211044)**
-for the H700/Mali target. Download the `reconflict.zip` asset, **not**
-GitHub's “Source code” archive.
-
-A separate [portable-GLES experimental build](https://github.com/rzrbld/ReConflict/releases/tag/v20261103-165228-gles)
-is available for testing. Its gameplay and compatibility on other firmware are
-not yet verified. Both downloads remain prereleases.
+Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-215804)**:
+the `reconflict.zip` asset, **not** GitHub's “Source code” archive. It is a
+prerelease, tested on H700 with 64-bit muOS.
 
 ## Install and play
 
 You need 64-bit PortMaster firmware with glibc 2.36 or newer, SDL2/SDL2_ttf,
-and **2 GiB free before copying the installer**. The main build requires the
-Mali driver (`libmali.so.0`); it is not a universal ARM64 build.
+and **2 GiB free before copying the installer**. Graphics use the firmware's
+OpenGL ES 2.0 driver through SDL (for example Mali or Panfrost); no driver is bundled.
 The launcher and importer are native binaries; **Python is not needed on the handheld**.
 The extractor is included; no PC extraction is required by the
 launcher. A complete fresh import has not yet been verified end-to-end on H700.

@@ -28,10 +28,9 @@ are verified and copied; the original files are never patched or deleted.
 Use a fresh checkout for a full build. The script deliberately rejects an existing
 optimized snapshot rather than silently mixing new source with stale objects.
 
-For the portable-GLES variant, clone with `--branch experiment/portable-gles`.
-That branch selects SDL-loaded GLES automatically. Main targets the Mali SONAME;
-it builds a **link-only** GLES ABI stub from the public SDK. The stub is never
-shipped: the handheld must provide the real `libmali.so.0` driver.
+The game resolves OpenGL ES through SDL at runtime, so the final executable
+links no GLES, EGL or Mali library. An intermediate baseline link still uses a
+**link-only** GLES ABI stub generated from the public SDK; it is never shipped.
 
 The optional third argument is a real gameplay PNG (4:3, at least 640x480).
 Without it, the script downloads a SHA-pinned earlier release archive and extracts
@@ -105,6 +104,7 @@ bash scripts/test_rotation_scalar.sh
 bash scripts/test_length_scalar.sh
 bash scripts/test_physics_product.sh
 bash scripts/test_fp_window.sh
+bash scripts/test_gles_dispatch.sh   # needs host Mesa GLES; SDL_VIDEODRIVER defaults to offscreen
 ```
 
 ## Package and submission staging

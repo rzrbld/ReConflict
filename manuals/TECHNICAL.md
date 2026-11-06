@@ -17,17 +17,16 @@ layout. Handheld import neither compiles the game nor executes the installer.
 
 ## Firmware compatibility
 
-Only ARM64 muOS on RG40XX-H has been exercised in gameplay. The H700 build links
-to `libmali.so.0`, SDL2 and SDL2_ttf; a Mali GPU alone does not guarantee that
-compatible libraries are present. It requests GLES 2.0 with depth/stencil support.
+Only ARM64 muOS on RG40XX-H has been exercised in gameplay. The executable links
+SDL2 and SDL2_ttf and resolves every OpenGL ES function through the current SDL
+context (`runtime/gles_dispatch.c`); it has no direct Mali, GLES or EGL library
+dependency. It requests GLES 2.0 with depth/stencil support, so the firmware's
+SDL must provide a working GLES driver (for example Mali or Panfrost). On H700 it
+runs at the same speed as the earlier build that linked `libmali.so.0` directly.
 Import and verification use the bundled native helper; no Python is needed at runtime.
 The package conservatively requires glibc 2.36. ARM32/x86 need separate builds.
-
-The `experiment/portable-gles` branch loads GLES functions through SDL and removes
-the direct Mali/GLES/EGL dependency. The firmware must still supply compatible
-SDL and graphics libraries. Host Mesa tests pass; combined portable-build gameplay
-and performance remain unverified on hardware. Do not transplant muOS GPU drivers
-to another firmware. PortMaster availability alone does not establish compatibility.
+Other firmware and GPU drivers are not yet verified. Do not transplant GPU drivers
+between firmware. PortMaster availability alone does not establish compatibility.
 
 ## Optimizations
 
@@ -78,5 +77,5 @@ For the retained optimized checkpoint, add `DS_INPUT_EDGE_FIX=1` and
 `DS_RT_BUILD_LABEL=input-edges` to the relink command in [Building](BUILDING.md). The optimized relink enables this fix by default; use `DS_INPUT_EDGE_FIX=0`
 only for comparison with the old adapter. Run `bash scripts/test_input_audio.sh` for the isolated
 DirectInput/SDL regression tests. The player confirmed improved firing on H700 with the stable-renderer test build.
-Full weapon coverage and portable-GLES gameplay validation remain pending.
+Full weapon coverage validation remains pending.
 This addresses lost short taps, not weapon-specific readiness or reload rules.
