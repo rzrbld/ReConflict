@@ -15,7 +15,7 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 
 ## Download
 
-Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-215804)**:
+Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-233425)**:
 the `reconflict.zip` asset, **not** GitHub's “Source code” archive. It is a
 prerelease, tested on H700 with 64-bit muOS.
 

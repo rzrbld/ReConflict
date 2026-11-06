@@ -1,5 +1,7 @@
 /* Isolated CPU skinning wrapper. Fuses the already differential-tested scalar
- * matrix formulas and exactly reproduces original guest scratch writes. */
+ * matrix formulas. Vertex outputs are computed without per-vertex guest scratch
+ * writes; the original sequence is then replayed for the last record of each
+ * kind, so the final guest memory, registers and FPU state match exactly. */
 #include "recomp_types.h"
 #include "skinning_fast.h"
 #ifdef __FAST_MATH__
@@ -62,6 +64,80 @@ static void transform_pair(uint32_t frame,uint32_t matrix,uint32_t pointsrc,uint
     uint32_t bits[3];memcpy(bits,normal,12);g_eax=dst+12;g_ecx=bits[2];g_edx=bits[1];g_esp=frame;g_cur_func=0x529520;
 }
 
+static int finite_word(uint32_t w){return (w&0x7f800000u)!=0x7f800000u;}
+/* Pure per-record outputs: identical arithmetic to transform/transform_pair,
+ * without the guest scratch and register writes that later records overwrite. */
+static void point3(const float m[16],const float v[3],int point,float out[3]){
+    double x=(double)v[2]*(double)m[8];double term=(double)v[1]*(double)m[4];x=x+term;
+    term=(double)v[0]*(double)m[0];x=x+term;if(point)x=x+(double)m[12];
+    double y=(double)v[0]*(double)m[1];term=(double)v[2]*(double)m[9];y=y+term;
+    term=(double)v[1]*(double)m[5];y=y+term;if(point)y=y+(double)m[13];
+    double z=(double)v[0]*(double)m[2];term=(double)v[2]*(double)m[10];z=z+term;
+    term=(double)v[1]*(double)m[6];z=z+term;if(point)z=z+(double)m[14];
+    out[0]=(float)x;out[1]=(float)y;out[2]=(float)z;
+}
+static void record_outputs(uint32_t source,uint32_t n,uint32_t palette,uint32_t metadata,uint32_t dst){
+    float m[16],v[3],r[3],acc[3]={0.f,0.f,0.f};
+    if(n==1){
+        typedef double f64x2 __attribute__((vector_size(16)));
+        typedef float f32x2 __attribute__((vector_size(8)));
+        float p[3],q[3],position[3],normal[3];
+        memcpy(p,(void*)ADDR(source),12);memcpy(q,(void*)ADDR(source+12),12);
+        memcpy(m,(void*)ADDR(bone_matrix(source,palette,metadata)),64);
+        f64x2 a={(double)p[2],(double)q[2]},b={(double)p[1],(double)q[1]},c={(double)p[0],(double)q[0]};
+        f64x2 mx8={(double)m[8],(double)m[8]},mx4={(double)m[4],(double)m[4]},mx0={(double)m[0],(double)m[0]};
+        f64x2 x=a*mx8;x=x+b*mx4;x=x+c*mx0;x[0]=x[0]+(double)m[12];
+        f64x2 my1={(double)m[1],(double)m[1]},my9={(double)m[9],(double)m[9]},my5={(double)m[5],(double)m[5]};
+        f64x2 y=c*my1;y=y+a*my9;y=y+b*my5;y[0]=y[0]+(double)m[13];
+        f64x2 mz2={(double)m[2],(double)m[2]},mz10={(double)m[10],(double)m[10]},mz6={(double)m[6],(double)m[6]};
+        f64x2 z=c*mz2;z=z+a*mz10;z=z+b*mz6;z[0]=z[0]+(double)m[14];
+        f32x2 packed=__builtin_convertvector(x,f32x2);position[0]=packed[0];normal[0]=packed[1];
+        packed=__builtin_convertvector(y,f32x2);position[1]=packed[0];normal[1]=packed[1];
+        packed=__builtin_convertvector(z,f32x2);position[2]=packed[0];normal[2]=packed[1];
+        memcpy((void*)ADDR(dst),position,12);memcpy((void*)ADDR(dst+12),normal,12);
+    }else{
+        for(uint32_t j=n;j-->0;){
+            uint32_t p=source+j*44;
+            memcpy(m,(void*)ADDR(bone_matrix(p,palette,metadata)),64);memcpy(v,(void*)ADDR(p),12);
+            point3(m,v,1,r);
+            float weight=read_float(p+40);
+            for(unsigned k=0;k<3;k++){float w=(float)((double)r[k]*(double)weight);acc[k]=(float)((double)w+(double)acc[k]);}
+        }
+        memcpy((void*)ADDR(dst),acc,12);
+        memcpy(m,(void*)ADDR(bone_matrix(source,palette,metadata)),64);memcpy(v,(void*)ADDR(source+12),12);
+        point3(m,v,0,r);memcpy((void*)ADDR(dst+12),r,12);
+    }
+    MEM32(dst+24)=UINT32_MAX;
+}
+/* The original per-record sequence, including scratch and register writes. */
+static void replay_record(uint32_t i,uint32_t frame,uint32_t records,uint32_t out,uint32_t palette,uint32_t metadata){
+    uint32_t record=records+i*8,n=MEM32(record),source=MEM32(record+4),dst=out+i*36,m;
+    MEM32(frame+20)=record;
+    if(n==1){
+        for(unsigned k=0;k<3;k++){MEM32(frame+72+k*4)=MEM32(source+k*4);MEM32(frame+48+k*4)=MEM32(source+k*4);}
+        for(unsigned k=0;k<3;k++){MEM32(frame+84+k*4)=MEM32(source+12+k*4);MEM32(frame+60+k*4)=MEM32(source+12+k*4);}
+        m=bone_matrix(source,palette,metadata);
+        transform_pair(frame,m,frame+48,frame+60,dst);
+    }else{
+        MEM32(frame+96)=0;MEM32(frame+100)=0;MEM32(frame+104)=0;
+        MEM32(dst)=MEM32(dst+4)=MEM32(dst+8)=0;
+        MEM32(frame+16)=(n-1)*44;MEM32(frame+24)=n;
+        for(uint32_t j=n;j-->0;){
+            uint32_t p=source+j*44;m=bone_matrix(p,palette,metadata);
+            for(unsigned k=0;k<3;k++){MEM32(frame+108+k*4)=MEM32(p+k*4);MEM32(frame+48+k*4)=MEM32(p+k*4);}
+            transform(frame,m,frame+48,frame+36,1);
+            MEM32(frame+16)=j*44-44;MEM32(frame+24)=j;
+            float weight=read_float(p+40);
+            for(unsigned k=0;k<3;k++)write_float(frame+36+k*4,(float)((double)read_float(frame+36+k*4)*(double)weight));
+            for(unsigned k=0;k<3;k++)write_float(dst+k*4,(float)((double)read_float(frame+36+k*4)+(double)read_float(dst+k*4)));
+        }
+        for(unsigned k=0;k<3;k++){MEM32(frame+120+k*4)=MEM32(source+12+k*4);MEM32(frame+60+k*4)=MEM32(source+12+k*4);}
+        m=bone_matrix(source,palette,metadata);
+        transform(frame,m,frame+60,dst+12,0);
+    }
+    MEM32(dst+24)=UINT32_MAX;MEM32(frame+28)=i+1;
+}
+
 int ds_skinning_fast_529520(void){
     if(!enabled())return 0;
     uint32_t s=g_esp,self=g_ecx;
@@ -73,60 +149,51 @@ int ds_skinning_fast_529520(void){
     uint32_t bytes=count*36u;
     if(overlaps(out,bytes,s-156,172)||!available(self,4,out,bytes,s)||!available(desc,24,out,bytes,s)||!available(records,count*8,out,bytes,s))return 0;
     /* Validate the complete common case first: no partial fallback after writes.
-     * Normal game input pointers must already refer to readable guest memory. */
-    /* Call-local validation cache; same alias checks as the scalar cache. */
+     * Same checks as before; a bone's metadata/palette result and a matrix's
+     * finite/flag result are reused within this call (memory is unchanged). */
     uint64_t checked_matrix[32]={0};
+    uint32_t bone_key[64]={0},bone_matrix_address[64];
+    int last_single=-1,last_multi=-1;
     for(uint32_t i=0;i<count;i++){
         uint32_t n=MEM32(records+i*8),source=MEM32(records+i*8+4);
         if(!n||n>8u||!available(source,n*44,out,bytes,s))return 0;
+        if(n==1)last_single=(int)i;else last_multi=(int)i;
         for(uint32_t j=0;j<n;j++){
-            uint32_t p=source+j*44,bone=MEM16(p+36);
-            uint64_t metadata_record=(uint64_t)metadata+bone*136u;
-            if(metadata_record>UINT32_MAX-136u||!available((uint32_t)metadata_record,136,out,bytes,s))return 0;
-            uint32_t index=MEM32((uint32_t)metadata_record+132);
-            uint64_t address=(uint64_t)palette+index*68ull;
-            if(address>UINT32_MAX-68u||!available((uint32_t)address,68,out,bytes,s))return 0;
-            uint32_t m=(uint32_t)address,slot=(m>>2)&31u;
-            uint64_t key=(uint64_t)m+1;
+            uint32_t p=source+j*44,bone=MEM16(p+36),w[6],bad=0;
+            memcpy(w,(void*)ADDR(p),24);
+            for(unsigned k=0;k<6;k++)bad|=!finite_word(w[k]);
+            if(n>1)bad|=!finite_word(MEM32(p+40));
+            if(bad)return 0;
+            uint32_t bslot=bone&63u,m;
+            if(bone_key[bslot]==bone+1u)m=bone_matrix_address[bslot];
+            else{
+                uint64_t metadata_record=(uint64_t)metadata+bone*136u;
+                if(metadata_record>UINT32_MAX-136u||!available((uint32_t)metadata_record,136,out,bytes,s))return 0;
+                uint32_t index=MEM32((uint32_t)metadata_record+132);
+                uint64_t address=(uint64_t)palette+index*68ull;
+                if(address>UINT32_MAX-68u||!available((uint32_t)address,68,out,bytes,s))return 0;
+                m=(uint32_t)address;bone_key[bslot]=bone+1u;bone_matrix_address[bslot]=m;
+            }
+            uint32_t slot=(m>>2)&31u;uint64_t key=(uint64_t)m+1;
             if(checked_matrix[slot]!=key){
-                if(!(MEM32(m+64)&2u))return 0;
-                for(unsigned k=0;k<16;k++)if(!isfinite(read_float(m+k*4)))return 0;
+                uint32_t mw[17];memcpy(mw,(void*)ADDR(m),68);
+                if(!(mw[16]&2u))return 0;
+                for(unsigned k=0;k<16;k++)bad|=!finite_word(mw[k]);
+                if(bad)return 0;
                 checked_matrix[slot]=key;
             }
-            for(unsigned k=0;k<6;k++)if(!isfinite(read_float(p+k*4)))return 0;
-            if(n>1&&!isfinite(read_float(p+40)))return 0;
         }
     }
     uint32_t frame=s-132;
     MEM32(s-120)=g_ebx;MEM32(s-124)=g_ebp;MEM32(s-100)=self;
     MEM32(s-128)=g_esi;MEM32(s-104)=0;MEM32(s-132)=g_edi;g_cur_func=0x529520;
-    for(uint32_t i=0;i<count;i++){
-        uint32_t record=records+i*8,n=MEM32(record),source=MEM32(record+4),dst=out+i*36,m;
-        MEM32(frame+20)=record;
-        if(n==1){
-            for(unsigned k=0;k<3;k++){MEM32(frame+72+k*4)=MEM32(source+k*4);MEM32(frame+48+k*4)=MEM32(source+k*4);}
-            for(unsigned k=0;k<3;k++){MEM32(frame+84+k*4)=MEM32(source+12+k*4);MEM32(frame+60+k*4)=MEM32(source+12+k*4);}
-            m=bone_matrix(source,palette,metadata);
-            transform_pair(frame,m,frame+48,frame+60,dst);
-        }else{
-            MEM32(frame+96)=0;MEM32(frame+100)=0;MEM32(frame+104)=0;
-            MEM32(dst)=MEM32(dst+4)=MEM32(dst+8)=0;
-            MEM32(frame+16)=(n-1)*44;MEM32(frame+24)=n;
-            for(uint32_t j=n;j-->0;){
-                uint32_t p=source+j*44;m=bone_matrix(p,palette,metadata);
-                for(unsigned k=0;k<3;k++){MEM32(frame+108+k*4)=MEM32(p+k*4);MEM32(frame+48+k*4)=MEM32(p+k*4);}
-                transform(frame,m,frame+48,frame+36,1);
-                MEM32(frame+16)=j*44-44;MEM32(frame+24)=j;
-                float weight=read_float(p+40);
-                for(unsigned k=0;k<3;k++)write_float(frame+36+k*4,(float)((double)read_float(frame+36+k*4)*(double)weight));
-                for(unsigned k=0;k<3;k++)write_float(dst+k*4,(float)((double)read_float(frame+36+k*4)+(double)read_float(dst+k*4)));
-            }
-            for(unsigned k=0;k<3;k++){MEM32(frame+120+k*4)=MEM32(source+12+k*4);MEM32(frame+60+k*4)=MEM32(source+12+k*4);}
-            m=bone_matrix(source,palette,metadata);
-        }
-        if(n!=1)transform(frame,m,frame+60,dst+12,0);
-        MEM32(dst+24)=UINT32_MAX;MEM32(frame+28)=i+1;
-    }
+    for(uint32_t i=0;i<count;i++)
+        record_outputs(MEM32(records+i*8+4),MEM32(records+i*8),palette,metadata,out+i*36);
+    /* Reproduce the final scratch/register state: the last record of each
+     * kind is the last writer of every slot that kind touches. */
+    int first=last_single<last_multi?last_single:last_multi,last=last_single<last_multi?last_multi:last_single;
+    if(first>=0)replay_record((uint32_t)first,frame,records,out,palette,metadata);
+    replay_record((uint32_t)last,frame,records,out,palette,metadata);
     g_eax=desc;g_esp=s+16;g_cur_func=0x529520;
     g_flag_k=FK_ADD;g_flag_a=s-116;g_flag_b=116;g_flag_cf=0;
     return 1;

@@ -42,7 +42,10 @@ The H700 build combines several targeted optimizations:
   smoke-heavy scenes substantially; their pixel comparisons passed on Mali.
 - **Native math helpers:** accelerate skinning, matrices, rotations, vector
   lengths and culling. Checked fast paths preserve the expected arithmetic
-  order and guest state, with fallbacks for unsupported cases.
+  order and guest state, with fallbacks for unsupported cases. Skinning checks
+  each bone once per call and skips per-vertex scratch writes that later
+  vertices overwrite, then reproduces the final guest state exactly; on H700
+  that kernel is about 1.5–1.7× faster, a gain too small to measure in FPS.
 - **Pointer-window x87 stack:** translated floating-point code keeps the eight
   x87 slots as a window into a larger buffer, so each push/pop moves a pointer
   instead of copying all eight values and their integer shadows. Results are
