@@ -16,7 +16,7 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 
 ## Download
 
-Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261107-194913)**:
+Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261107-195926)**:
 the `reconflict.zip` asset, **not** GitHub's “Source code” archive. It is a
 prerelease, tested on H700 with 64-bit muOS and on RG DS with BananaOS.
 
@@ -53,10 +53,19 @@ A frame cap limits fast scenes; it cannot speed up slow ones.
 **Texture quality: Low / High** sets texture resolution. **Surface detail: Off / On**
 is a separate detail-texture effect; these are independent settings.
 
-Expect roughly **20–30 FPS in busy gameplay**, with higher rates in light scenes.
-Large explosions can briefly dip into the high teens. Performance varies, and the
-whole game has not been verified. The controller update improves missed quick
-fire-button presses.
+Expect about **25–30 FPS in normal gameplay** and the **menu at 30 FPS** on H700,
+with higher rates in light scenes. Large explosions are the heaviest moments:
+measured on H700 over the 12 seconds of the two-truck explosion in Rescue (same
+save, scripted, two runs each):
+
+| Build | Worst 4 s | 12 s average |
+|---|---|---|
+| v20261106-233425 (FPU window, faster skinning) | 15 FPS | 22 FPS |
+| Current (plus GPU streaming buffer, asynchronous present) | 15–22 FPS | 22–25 FPS |
+
+Brief dips into the high teens remain in the biggest blasts; that is the game's
+own CPU work. Performance varies between runs, and the whole game has not been
+verified. The controller update improves missed quick fire-button presses.
 
 **The GPU driver matters.** The game draws with many small draw calls (menus and
 some cutscenes several hundred per frame). The Mali driver on H700 handles them
@@ -70,10 +79,7 @@ Two changes cut that cost: per-draw vertex/index uploads now go through a
 persistent GPU streaming buffer instead of one `glBufferData` call each, and with
 the render thread the game prepares the next frame while the previous one is
 drawn and swapped (it no longer waits for the GPU thread every frame). On RG DS
-the main menu rose from 20 to 24+ FPS and heavy scenes now match H700; on H700 the
-menu holds its 30 FPS cap and a scripted gameplay stretch went from about 25 to 30
-FPS. Large explosions still dip briefly to about 18 FPS on both devices; that is
-the game's own CPU work, not the driver.
+the main menu rose from 20 to 24+ FPS and heavy scenes now play like on H700.
 
 The picture scales to any screen size with the game's 4:3 aspect and black bars
 (for example 480×320, 720×720 or 1280×720 panels).
