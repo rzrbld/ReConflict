@@ -1,3 +1,4 @@
+#include "screen_fit.h"
 #include "frame_limiter.h"
 /* 32-bit guest Direct3D8 COM facade, backed by SDL2 and native GLES.
  * API method order and structures follow the public Direct3D8 ABI. Host
@@ -218,7 +219,7 @@ static void addref(uint32_t o){if(o)MEM32(o+4)++;}
 static void release(uint32_t handle){Object *o=object(handle);if(!o)return;if(MEM32(handle+4)&&--MEM32(handle+4))return;uint32_t parent=o->parent;
     if(o->owns_memory)for(unsigned l=0;l<o->levels;l++)if(o->memory[l]){hle_free(hle_ptr(o->memory[l]));resource_bytes-=o->bytes[l];}
     resource_bytes-=o->gpu_bytes;if(o->texture){d8_renderer_forget_texture(&renderer,o->texture);glDeleteTextures(1,&o->texture);}if(o->depth)glDeleteRenderbuffers(1,&o->depth);if(o->fbo)glDeleteFramebuffers(1,&o->fbo);if(o->buffer){d8_renderer_invalidate_attributes(&renderer);glDeleteBuffers(1,&o->buffer);}
-    if(handle==device_obj){device_obj=0;ds_fps_overlay_close();d8_renderer_close(&renderer);if(context)SDL_GL_DeleteContext(context);if(window)SDL_DestroyWindow(window);window=NULL;context=NULL;hle_set_pump_hook(NULL);}
+    if(handle==device_obj){device_obj=0;ds_fps_overlay_close();ds_screen_fit_close();d8_renderer_close(&renderer);if(context)SDL_GL_DeleteContext(context);if(window)SDL_DestroyWindow(window);window=NULL;context=NULL;hle_set_pump_hook(NULL);}
     uint32_t slot=(uint32_t)(o-objects);memset(o,0,sizeof(*o));if(ds_d8_slot_put(&object_slots,slot))hle_fatal("D3D8 object slot recycling failed: %u",slot);hle_com_free(handle);if(parent)release(parent);
 }
 static void unsupported(void){hle_fatal("D3D8 unsupported method %s, object=%#x",g_cur_import?g_cur_import:"unknown",A32(0));}
@@ -277,7 +278,7 @@ static int upload(Object *o){
 }
 static Object *pixel_owner(Object *o,unsigned *level){if(o->kind==SURFACE&&o->parent){*level=o->lod;return object(o->parent);}*level=0;return o;}
 static uint32_t new_surface(unsigned w,unsigned h,unsigned fmt,unsigned usage,int back,int depth){if(!w||!h||w>2048||h>2048)return 0;uint32_t handle=make_object(SURFACE);Object *o=object(handle);if(!o)return 0;o->width=w;o->height=h;o->format=fmt;o->usage=usage;o->levels=1;o->backbuffer=back;if(!back&&!depth&&allocate_pixels(o)){release(handle);return 0;}if(depth){uint64_t bytes=(uint64_t)w*h*(fmt==80?2:4);if(resource_bytes+bytes>TEX_BUDGET){release(handle);return 0;}o->gpu_bytes=(uint32_t)bytes;resource_bytes+=bytes;glGenRenderbuffers(1,&o->depth);glBindRenderbuffer(GL_RENDERBUFFER,o->depth);glRenderbufferStorage(GL_RENDERBUFFER,fmt==75?GL_DEPTH24_STENCIL8_OES:fmt==77?GL_DEPTH_COMPONENT24_OES:GL_DEPTH_COMPONENT16,w,h);}return handle;}
-static int bind_target(uint32_t color,uint32_t depth){Object *c=object(color),*d=object(depth);if(!c||c->kind!=SURFACE||d&&d->kind!=SURFACE)return -1;if(c->backbuffer){glBindFramebuffer(GL_FRAMEBUFFER,0);}else{unsigned level=0;Object *t=pixel_owner(c,&level);if(t->kind!=TEXTURE||level)return -1;if(upload(t))return -1;GLint previous_fbo;glGetIntegerv(GL_FRAMEBUFFER_BINDING,&previous_fbo);if(!c->fbo)glGenFramebuffers(1,&c->fbo);glBindFramebuffer(GL_FRAMEBUFFER,c->fbo);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,t->texture,level);glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,d?d->depth:0);glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_STENCIL_ATTACHMENT,GL_RENDERBUFFER,d&&d->format==75?d->depth:0);if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE){glBindFramebuffer(GL_FRAMEBUFFER,(GLuint)previous_fbo);return -1;}}
+static int bind_target(uint32_t color,uint32_t depth){Object *c=object(color),*d=object(depth);if(!c||c->kind!=SURFACE||d&&d->kind!=SURFACE)return -1;if(c->backbuffer){glBindFramebuffer(GL_FRAMEBUFFER,ds_screen_fit_target());}else{unsigned level=0;Object *t=pixel_owner(c,&level);if(t->kind!=TEXTURE||level)return -1;if(upload(t))return -1;GLint previous_fbo;glGetIntegerv(GL_FRAMEBUFFER_BINDING,&previous_fbo);if(!c->fbo)glGenFramebuffers(1,&c->fbo);glBindFramebuffer(GL_FRAMEBUFFER,c->fbo);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,t->texture,level);glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,d?d->depth:0);glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_STENCIL_ATTACHMENT,GL_RENDERBUFFER,d&&d->format==75?d->depth:0);if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE){glBindFramebuffer(GL_FRAMEBUFFER,(GLuint)previous_fbo);return -1;}}
     render_target=color;depth_target=depth;return 0;}
 static void descriptor(uint32_t dst,Object *o,unsigned level){uint32_t d[8]={o->format,1,o->usage,o->pool,o->bytes[level],0,mipdim(o->width,level),mipdim(o->height,level)};memcpy(hle_ptr(dst),d,sizeof d);}
 static void target_written(void){Object *o=object(render_target);if(!o)return;unsigned level;Object *p=pixel_owner(o,&level);p->gpu_dirty=1;p->gpu_origin=1;}
@@ -302,7 +303,7 @@ static int sync_pixels(Object *surface){
     if(!o->memory[level]){if(level||o->levels!=1||allocate_pixels(o))return -1;}
     uint8_t *rgba=malloc((size_t)width*height*4);if(!rgba)return -1;
     GLint previous;glGetIntegerv(GL_FRAMEBUFFER_BINDING,&previous);GLuint temp=0;
-    if(surface->backbuffer)glBindFramebuffer(GL_FRAMEBUFFER,0);
+    if(surface->backbuffer)glBindFramebuffer(GL_FRAMEBUFFER,ds_screen_fit_target());
     else{if(!o->texture){free(rgba);return -1;}glGenFramebuffers(1,&temp);glBindFramebuffer(GL_FRAMEBUFFER,temp);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,o->texture,level);if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE){glBindFramebuffer(GL_FRAMEBUFFER,(GLuint)previous);glDeleteFramebuffers(1,&temp);free(rgba);return -1;}}
     glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,rgba);int error=glGetError()!=0;
     glBindFramebuffer(GL_FRAMEBUFFER,(GLuint)previous);if(temp)glDeleteFramebuffers(1,&temp);
@@ -346,7 +347,7 @@ static void root_caps(void){if(A32(1)){RET(INVALID,4);}caps(APTR(3));RET(OK,4);}
 static void monitor(void){RET(A32(1)?0:1,2);}
 static int open_device(uint32_t params){if(!params)return -1;memcpy(presentation,hle_ptr(params),sizeof presentation);unsigned w=presentation[0]?presentation[0]:640,h=presentation[1]?presentation[1]:480;if(w>2048||h>2048)return -1;presentation[0]=w;presentation[1]=h;presentation[4]=0;
     if(SDL_InitSubSystem(SDL_INIT_VIDEO|SDL_INIT_EVENTS))return -1;SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_ES);SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,2);SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,0);SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,8);
-    window=SDL_CreateWindow("Conflict: Desert Storm",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,w,h,SDL_WINDOW_OPENGL|SDL_WINDOW_FULLSCREEN_DESKTOP);if(!window)return -1;context=SDL_GL_CreateContext(window);if(!context)return -1;SDL_GL_SetSwapInterval(ds_frame_swap_interval(presentation[12]==0x80000000u?0:1));SDL_ShowCursor(SDL_DISABLE);
+    window=SDL_CreateWindow("Conflict: Desert Storm",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,w,h,SDL_WINDOW_OPENGL|SDL_WINDOW_FULLSCREEN_DESKTOP);if(!window)return -1;context=SDL_GL_CreateContext(window);if(!context)return -1;SDL_GL_SetSwapInterval(ds_frame_swap_interval(presentation[12]==0x80000000u?0:1));SDL_ShowCursor(SDL_DISABLE);ds_screen_fit_init(window,(int)w,(int)h);
     fprintf(stderr,"[d3d8] CreateDevice %ux%u GL=%s renderer=%s\n",w,h,glGetString(GL_VERSION),glGetString(GL_RENDERER));if(d8_renderer_init(&renderer))return -1;d8_state_defaults(&state,w,h);ds_d8_lights_init(&light_bank);pack_lights();hle_set_screen_size(w,h);hle_set_pump_hook(pump);
     render_target=backbuffer_obj=new_surface(w,h,presentation[2]?presentation[2]:22,1,1,0);addref(render_target);depth_target=presentation[8]?new_surface(w,h,presentation[9],2,0,1):0;memcpy(hle_ptr(params),presentation,sizeof presentation);return 0;
 }

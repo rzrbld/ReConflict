@@ -1,7 +1,8 @@
 # ReConflict
 
-Play **Conflict: Desert Storm** on the **Anbernic RG40XX-H (H700)** through
-PortMaster. Tested on **64-bit muOS**; other firmware and devices are not yet verified.
+Play **Conflict: Desert Storm** on ARM64 handhelds through PortMaster. Tested on
+the **Anbernic RG40XX-H (H700, 64-bit muOS, Mali driver)** and the **Anbernic RG DS
+(RK3568, BananaOS, Mesa Panfrost driver)**; other firmware and devices are not yet verified.
 
 **You need your own game.** [Buy it on GOG](https://www.gog.com/en/game/conflict_desert_storm)
 and download the English offline Windows installer:
@@ -15,9 +16,9 @@ Thanks to **Pivotal Games**, the original developer, for creating Conflict: Dese
 
 ## Download
 
-Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261106-233425)**:
+Download the **[runtime ZIP](https://github.com/rzrbld/ReConflict/releases/tag/v20261107-160424)**:
 the `reconflict.zip` asset, **not** GitHub's “Source code” archive. It is a
-prerelease, tested on H700 with 64-bit muOS.
+prerelease, tested on H700 with 64-bit muOS and on RG DS with BananaOS.
 
 ## Install and play
 
@@ -56,6 +57,19 @@ Expect roughly **20–30 FPS in busy gameplay**, with higher rates in light scen
 Large explosions can briefly dip into the high teens. Performance varies, and the
 whole game has not been verified. The controller update improves missed quick
 fire-button presses.
+
+**The GPU driver matters.** The game draws with many small draw calls (menus and
+some cutscenes several hundred per frame). The Mali driver on H700 handles them
+cheaply. Mesa's Panfrost driver (for example on RG DS / RK3568) spends far more
+CPU time per call: measured on RG DS, about 20 µs per draw and about 160 µs per
+partial buffer update, roughly ten times the H700's cost for the same scene. So on
+Panfrost devices **gameplay can run faster than on H700** (35–48 FPS on RG DS),
+while **the main menu and some cutscenes drop to about 20 FPS** even though the
+CPU and GPU are faster. The frame cap does not change this. Reducing these driver
+calls is planned.
+
+The picture scales to any screen size with the game's 4:3 aspect and black bars
+(for example 480×320, 720×720 or 1280×720 panels).
 
 ## In-game controls
 

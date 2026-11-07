@@ -1,6 +1,7 @@
 /* A default-on diagnostic HUD using actual completed Present intervals.
  * One small bitmap atlas and one draw. All touched game GL state is restored.
  * No SDL_ttf dependency and no draws when DS_FPS_OVERLAY=0. */
+#include "screen_fit.h"
 #include "fps_overlay.h"
 #include <GLES2/gl2.h>
 #include <stdint.h>
@@ -136,6 +137,7 @@ static void quad(Vertex *out,float x,float y,float w,float h,float u0,float v0,f
 }
 
 void ds_fps_overlay_draw(SDL_Window *window) {
+    ds_screen_fit_present(window);   /* scale the frame onto the screen first */
     if(!overlay_enabled()||failed||!window)return;
     int width,height;SDL_GL_GetDrawableSize(window,&width,&height);if(width<1||height<1)return;
     SavedState old;save(&old);

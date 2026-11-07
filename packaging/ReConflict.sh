@@ -25,8 +25,8 @@ if [ ! -d "$GAMEDIR" ] && [ -n "${directory:-}" ]; then GAMEDIR="/${directory#/}
 # Keep existing saves/installations usable under the historical directory name.
 if [ ! -d "$GAMEDIR" ]; then
     for candidate in "$(dirname -- "${BASH_SOURCE[0]}")/desert-storm" \
-        "${sdroot:-/mnt/sdcard}/ports/desert-storm" "/${directory#/}/ports/desert-storm"; do
-        if [ -d "$candidate" ]; then GAMEDIR=$candidate; break; fi
+        "${sdroot:+$sdroot/ports/desert-storm}" "${directory:+/${directory#/}/ports/desert-storm}"; do
+        if [ -n "$candidate" ] && [ -d "$candidate" ]; then GAMEDIR=$candidate; break; fi
     done
 fi
 cd "$GAMEDIR" || exit 1
@@ -41,11 +41,8 @@ if grep -q 'Name="Deeplay-keys"' /proc/bus/input/devices && [ -f /usr/lib/gameco
 fi
 export LD_LIBRARY_PATH="$GAMEDIR/libs.${DEVICE_ARCH:-aarch64}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export DS_PAD_CONFIG="$GAMEDIR/controller-buttons.cfg"
-# muOS's ALSA default is a PipeWire plugin; SSH sessions need its socket path.
-if [ "${CFW_NAME:-}" = muOS ]; then
-    if [ -S /run/pipewire-0 ]; then export XDG_RUNTIME_DIR=/run; fi
-    export SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-alsa}
-fi
+# Audio: SDL picks the firmware's default output (PipeWire, PulseAudio or ALSA),
+# so the system volume and volume keys apply. Set SDL_AUDIODRIVER to override.
 # SSH launches bypass ext-general.sh. Inherit the same device display values
 # when that firmware handoff has not already supplied them.
 if [ "${CFW_NAME:-}" = muOS ] && [ -d /run/muos/device/sdl ]; then
@@ -74,7 +71,9 @@ export DS_FAST_PARTICLES=${DS_FAST_PARTICLES:-1}
 # Mali-tested exact fog/glow paths; set either to 0 for comparisons.
 export DS_FAST_FOG=${DS_FAST_FOG:-1}
 export DS_FAST_GLOW=${DS_FAST_GLOW:-1}
-if [ "${CFW_NAME:-}" = muOS ] && [ -f "$GAMEDIR/muos-session.sh" ]; then
+# Frontend handover is the firmware's and PortMaster's job (control.txt /
+# mod_<CFW>.txt). muos-session.sh is only for SSH test launches.
+if [ -n "${DS_SSH_TEST:-}" ] && [ "${CFW_NAME:-}" = muOS ] && [ -f "$GAMEDIR/muos-session.sh" ]; then
     source "$GAMEDIR/muos-session.sh"
     ds_muos_suspend || exit 1
 fi

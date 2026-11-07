@@ -23,12 +23,13 @@ python3 scripts/stage_physics_product.py
 python3 scripts/stage_present_timing.py
 python3 scripts/stage_loading_background.py
 python3 scripts/stage_frame_limiter.py
+python3 scripts/stage_screen_fit.py
 export DS_RT_PROXY_SOURCE=build/render-thread-stage/wake-batch/render_thread_proxy.c
 export DS_RT_GEOMETRY_SOURCE=build/render-thread-stage/geometry-flags/geometry_fast.c
 export DS_RT_PROFILER_SOURCE=build/dense-profiler/profiler.c
 export DS_RT_SKINNING_SOURCE=probe/skinning_cached_pair.c
 export DS_RT_RENDERER_SOURCE=build/index-scan/d3d8_renderer.c
-export DS_RT_D3D8_SOURCE=build/frame-limit/d3d8.c
+export DS_RT_D3D8_SOURCE=build/screen-fit/d3d8.c
 export DS_RT_ROTATION_STAGE=build/rotation-scalar
 export DS_RT_LENGTH_STAGE=build/length-scalar
 export DS_RT_PHYSICS_PRODUCT_STAGE=build/physics-product
